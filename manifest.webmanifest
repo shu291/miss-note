@@ -1,0 +1,16 @@
+{
+  "name": "ミスノート",
+  "short_name": "ミスノート",
+  "description": "間違えた問題を撮るだけ。復習日が自動で決まり、今日やるぶんだけ出てくる間違いノート。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f9f9f7",
+  "theme_color": "#d03b3b",
+  "lang": "ja",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
