@@ -125,6 +125,7 @@ p.sub{margin:0 0 14px;color:var(--ink-2);font-size:13px}
   padding:11px 16px;font-weight:600;cursor:pointer;min-height:44px;
 }
 .btn:active{transform:translateY(1px)}
+a.btn{text-decoration:none;color:inherit}
 .btn.primary{background:var(--accent);border-color:transparent;color:var(--on-accent)}
 .btn.wide{width:100%}
 .btn.ghost{background:transparent}
@@ -591,6 +592,65 @@ async function imgURL(id){
 }
 
 /* =========================================================
+   じぶん教科書 連携（ref 付きノート）
+   同じ shu291.github.io 上の「じぶん教科書」から登録された問題は、
+   画像を持たず ref（本ID・ページ背番号・範囲）だけを持つ。
+   表示するたびに教科書側の IndexedDB から切り抜いて出す。
+   ========================================================= */
+const TEXTBOOK_URL = "../digi-textbook/";
+let tbDbP = null;
+function tbDb(){
+  if (tbDbP) return tbDbP;
+  tbDbP = new Promise((res, rej) => {
+    const rq = indexedDB.open("digi-textbook");
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+  return tbDbP;
+}
+async function tbReq(fn){
+  const db = await tbDb();
+  return new Promise((res, rej) => {
+    const rq = fn(db);
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function refInfo(note){
+  try{
+    const pages = await tbReq(db => db.transaction("pages").objectStore("pages").index("byBook").getAll(note.ref.bookId));
+    const p = pages.find(x => x.uid === note.ref.pageUid);
+    return p ? { pageNo: p.pageNo } : null;
+  } catch { return null; }
+}
+async function refURL(note){
+  const key = "ref:" + note.id;
+  if (urlCache.has(key)) return urlCache.get(key);
+  try{
+    const info = await refInfo(note);
+    if (!info) return null;
+    const imgRec = await tbReq(db => db.transaction("images").objectStore("images").get([note.ref.bookId, info.pageNo]));
+    if (!imgRec?.blob) return null;
+    const img = new Image();
+    const u0 = URL.createObjectURL(imgRec.blob);
+    try { img.src = u0; await img.decode(); } finally { setTimeout(() => URL.revokeObjectURL(u0), 0); }
+    const [x, y, w, h] = note.ref.rect;
+    const sx = x * img.naturalWidth, sy = y * img.naturalHeight;
+    const sw = Math.max(1, w * img.naturalWidth), sh = Math.max(1, h * img.naturalHeight);
+    const scale = Math.min(1, 640 / sw);
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(sw * scale));
+    c.height = Math.max(1, Math.round(sh * scale));
+    c.getContext("2d").drawImage(img, sx, sy, sw, sh, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.85));
+    if (!blob) return null;
+    const u = URL.createObjectURL(blob);
+    urlCache.set(key, u);
+    return u;
+  } catch { return null; }
+}
+
+/* =========================================================
    起動
    ========================================================= */
 (async function init(){
@@ -847,7 +907,12 @@ async function renderReview(){
   const note = state.notes.find(n => n.id === state.queue[state.qi]);
   if (!note){ state.qi++; return renderReview(); }
 
-  const qUrl = await imgURL(note.qImg);
+  let qUrl = await imgURL(note.qImg);
+  let refPage = null;
+  if (!qUrl && note.ref){
+    qUrl = await refURL(note);
+    refPage = (await refInfo(note))?.pageNo ?? null;
+  }
   const aUrl = await imgURL(note.aImg);
   const pct = state.sessionTotal ? Math.round(state.sessionDone / state.sessionTotal * 100) : 0;
   const dots = INTERVALS.map((_, i) => `<i class="${i < note.step ? "on" : ""}"></i>`).join("");
@@ -857,7 +922,9 @@ async function renderReview(){
   const memoIsQuestion = !qUrl && !!note.memo;
   const qBody = qUrl
     ? `<img src="${qUrl}" alt="問題の写真">`
-    : `<div class="q-text">${esc(note.memo || "（写真もメモもありません）")}</div>`;
+    : note.ref
+      ? `<div class="q-text">参考書のページを表示できません（教科書側で削除されたかも）</div>`
+      : `<div class="q-text">${esc(note.memo || "（写真もメモもありません）")}</div>`;
 
   box.innerHTML = `
     <div class="progress-line">
@@ -869,10 +936,12 @@ async function renderReview(){
       <div class="q-wrap">${qBody}</div>
       <div class="meta-row">
         <span class="tagmini">${esc(note.subject || "教科なし")}</span>
+        ${note.ref ? `<span class="tagmini">📖 ${esc(note.ref.bookTitle)}${refPage ? " p." + refPage : ""}</span>` : ""}
         ${note.unit ? `<span class="tagmini">${esc(note.unit)}</span>` : ""}
         <span class="tagmini">登録 ${esc(fmtDate(note.createdAt))}</span>
         ${late < 0 ? `<span class="tagmini cause">${-late}日おくれ</span>` : ""}
       </div>
+      ${note.ref ? `<div style="margin-top:12px"><a class="btn ghost wide" href="${TEXTBOOK_URL}#miss=${encodeURIComponent(note.id)}">📖 参考書で解きにいく（判定もあっちでできる）</a></div>` : ""}
       <div id="answer-slot"></div>
     </div>`;
 
@@ -1178,7 +1247,7 @@ function renderList(){
   }
   box.innerHTML = `<div class="grid">` + list.map(n => `
     <button class="tile" data-id="${n.id}">
-      <div class="thumb" data-img="${n.qImg || ""}">${n.qImg ? "" : `<div class="txt">${esc(n.memo || "（メモなし）")}</div>`}</div>
+      <div class="thumb" data-img="${n.qImg || ""}" data-ref="${!n.qImg && n.ref ? n.id : ""}">${n.qImg || n.ref ? "" : `<div class="txt">${esc(n.memo || "（メモなし）")}</div>`}</div>
       <div class="body">
         <div class="l1"><span class="dot" style="background:${n.mastered ? "var(--good)" : "var(--accent)"}"></span>${esc(n.subject)}</div>
         <div class="l2">${n.mastered ? "定着ずみ" : "次 " + esc(relDay(n.dueAt))}・${esc(n.cause)}</div>
@@ -1190,6 +1259,12 @@ function renderList(){
     const u = await imgURL(id);
     if (u) el.innerHTML = `<img src="${u}" alt="">`;
   });
+  $$("#list-body .thumb[data-ref]").forEach(async el => {
+    const id = el.dataset.ref; if (!id) return;
+    const n = state.notes.find(x => x.id === id); if (!n) return;
+    const u = await refURL(n);
+    if (u) el.innerHTML = `<img src="${u}" alt="">`;
+  });
   box.onclick = e => {
     const t = e.target.closest(".tile"); if (!t) return;
     openDetail(t.dataset.id);
@@ -1198,7 +1273,9 @@ function renderList(){
 
 async function openDetail(id){
   const n = state.notes.find(x => x.id === id); if (!n) return;
-  const qUrl = await imgURL(n.qImg), aUrl = await imgURL(n.aImg);
+  let qUrl = await imgURL(n.qImg);
+  if (!qUrl && n.ref) qUrl = await refURL(n);
+  const aUrl = await imgURL(n.aImg);
   const hist = (n.history || []).slice(-12)
     .map(h => `<b class="${h.ok ? "ok" : "ng"}">${fmtDate(h.at)}${h.ok ? "○" : "×"}${h.retry ? "*" : ""}</b>`).join("");
   const tries = (n.history || []).filter(h => !h.retry);
@@ -1217,6 +1294,7 @@ async function openDetail(id){
     ${n.memo ? `<div class="card" style="white-space:pre-wrap;font-size:14px">${esc(n.memo)}</div>` : ""}
     ${aUrl ? `<div class="q-wrap" style="margin-top:10px"><img src="${aUrl}" alt="解答"></div>` : ""}
     ${hist ? `<div class="hist">${hist}</div>` : ""}
+    ${n.ref ? `<a class="btn ghost wide" style="margin-top:12px" href="${TEXTBOOK_URL}#miss=${encodeURIComponent(n.id)}">📖 参考書で開く</a>` : ""}
     <div class="btn-row" style="margin-top:16px">
       <button class="btn" id="d-now">今すぐ復習に入れる</button>
       <button class="btn ghost" id="d-reset">最初からやり直す</button>
