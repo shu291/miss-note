@@ -563,8 +563,9 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
 
     <!-- ============ 分析 ============ -->
     <section class="view" id="view-stats" aria-label="分析">
-      <h2 class="title">分析</h2>
-      <p class="sub">自分のミスのクセを数字で見る。</p>
+      <h2 class="title" id="stats-title">分析</h2>
+      <p class="sub" id="stats-sub">自分のミスのクセを数字で見る。</p>
+      <div class="chips" id="stats-book"></div>
       <div id="stats-body"></div>
     </section>
   </main>
@@ -629,6 +630,29 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
   </div>
 </div>
 
+<!-- ============ cause modal ============ -->
+<div class="modal" id="modal-cause" role="dialog" aria-modal="true" aria-label="なぜ間違えたかの項目">
+  <div class="scrim" data-close></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 id="cause-title">項目を追加</h3>
+    <p class="muted" style="margin:0 0 4px" id="cause-lead">間違いのクセを自分の言葉で分けられます。</p>
+    <label class="field">
+      <span>項目の名前</span>
+      <input type="text" id="in-cause-name" placeholder="例：符号ミス" autocomplete="off" maxlength="12">
+    </label>
+    <label class="field">
+      <span>説明 <span class="opt">（任意・長押しで出る目安）</span></span>
+      <input type="text" id="in-cause-desc" placeholder="例：マイナスの付け忘れ" autocomplete="off" maxlength="40">
+    </label>
+    <div class="btn-row" style="margin-top:20px">
+      <button class="btn ghost" data-close>やめる</button>
+      <button class="btn primary" id="btn-cause-save">保存</button>
+    </div>
+    <button class="btn danger wide" id="btn-cause-del" style="margin-top:10px" hidden>この項目を削除</button>
+  </div>
+</div>
+
 <!-- ============ settings modal ============ -->
 <div class="modal" id="modal-settings" role="dialog" aria-modal="true" aria-label="設定">
   <div class="scrim" data-close></div>
@@ -642,6 +666,14 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
       <p class="muted" style="margin:6px 0 0">登録しておくと、追加画面と復習おわりの画面に<b>ワンタップで撮影に入れるボタン</b>が出ます。教科も自動で入ります。</p>
       <div id="book-manage" style="margin-top:12px"></div>
       <button class="btn ghost wide" id="btn-book-add" style="margin-top:12px">＋ 参考書を登録</button>
+    </div>
+
+    <div class="card">
+      <div class="row-between"><b style="font-size:14px">なぜ間違えた？の項目</b><span class="muted" id="cause-count">—</span></div>
+      <p class="muted" style="margin:6px 0 0">自分の言葉に変えられます。分析の「間違えた原因」はこの項目ごとに出ます。</p>
+      <div id="cause-manage" style="margin-top:12px"></div>
+      <button class="btn ghost wide" id="btn-cause-add" style="margin-top:12px">＋ 項目を追加</button>
+      <button class="btn ghost wide" id="btn-cause-reset" style="margin-top:8px">最初の6個に戻す</button>
     </div>
 
     <div class="card">
@@ -701,8 +733,9 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
 
 /* ---------- 定数 ---------- */
 const INTERVALS = [1, 3, 7, 16, 35];       // 正解するたびに次の段へ
-const SUBJECTS = ["数学","英語","国語","物理","化学","生物","地学","日本史","世界史","地理","公民","情報","その他"];
-const CAUSES = [
+const SUBJECTS = ["数学","英語","物理","化学","生物","地学","情報","その他"];
+/* 「なぜ間違えた？」の初期値。設定から自分の言葉に変えられる（state.prefs.causes） */
+const DEFAULT_CAUSES = [
   { k:"計算ミス",   d:"式は合っていたのに数を間違えた" },
   { k:"覚えてない", d:"知識・公式そのものが出てこない" },
   { k:"読み違い",   d:"問題文の条件を取り違えた" },
@@ -710,6 +743,10 @@ const CAUSES = [
   { k:"詰めが甘い", d:"途中まで合っていたが最後で崩れた" },
   { k:"時間切れ",   d:"解けたはずだが間に合わなかった" },
 ];
+function causes(){
+  const c = state.prefs.causes;
+  return Array.isArray(c) && c.length ? c : DEFAULT_CAUSES;
+}
 const DAY = 86400000;
 
 /* ---------- 小道具 ---------- */
@@ -787,6 +824,7 @@ const state = {
   sessionDone: 0, sessionTotal: 0,
   draft: { qImg: null, aImg: null, subject: null, cause: null, bookId: null },
   filter: { status: "all", subject: null, book: null },
+  statsBook: null,            // 分析をこの参考書だけで見る
 };
 const urlCache = new Map();
 async function imgURL(id){
@@ -1304,8 +1342,8 @@ window.__go = go;
 function buildChips(){
   $("#chips-subject").innerHTML = SUBJECTS
     .map(s => `<button class="chip" type="button" aria-pressed="false" data-v="${esc(s)}">${esc(s)}</button>`).join("");
-  $("#chips-cause").innerHTML = CAUSES
-    .map(c => `<button class="chip" type="button" aria-pressed="false" data-v="${esc(c.k)}" title="${esc(c.d)}">${esc(c.k)}</button>`).join("");
+  $("#chips-cause").innerHTML = causes()
+    .map(c => `<button class="chip" type="button" aria-pressed="false" data-v="${esc(c.k)}" title="${esc(c.d || "")}">${esc(c.k)}</button>`).join("");
 
   $("#chips-subject").onclick = e => {
     const b = e.target.closest(".chip"); if (!b) return;
@@ -1513,6 +1551,84 @@ function renderBooks(){
     closeModals();
     if (bk) openBookNote(bk.name);
   });
+}
+
+/* ---------- 「なぜ間違えた？」の項目を編集する ---------- */
+let causeEditKey = null;
+function openCauseModal(key){
+  causeEditKey = key;
+  const c = key ? causes().find(x => x.k === key) : null;
+  const used = key ? state.notes.filter(n => n.cause === key).length : 0;
+  $("#cause-title").textContent = c ? "項目を編集" : "項目を追加";
+  $("#cause-lead").textContent = c
+    ? `この項目のミス ${used}問。名前を変えると登録ずみのミスもついてきます。`
+    : "間違いのクセを自分の言葉で分けられます。";
+  $("#in-cause-name").value = c ? c.k : "";
+  $("#in-cause-desc").value = c ? (c.d || "") : "";
+  $("#btn-cause-del").hidden = !c;
+  closeModals();
+  $("#modal-cause").classList.add("open");
+  setTimeout(() => $("#in-cause-name").focus(), 60);
+}
+async function saveCauseModal(){
+  const name = $("#in-cause-name").value.trim();
+  const desc = $("#in-cause-desc").value.trim();
+  if (!name){ toast("項目の名前を入れてください"); return; }
+  const list = causes().map(c => ({ ...c }));
+  const dup = list.find(c => c.k === name && c.k !== causeEditKey);
+  if (dup){ toast("同じ名前の項目があります"); return; }
+  if (causeEditKey){
+    const c = list.find(x => x.k === causeEditKey);
+    if (!c) return;
+    const old = c.k;
+    c.k = name; c.d = desc;
+    state.prefs.causes = list; savePrefs();
+    if (old !== name){        // 登録ずみのミスの原因も付け替える
+      for (const n of state.notes.filter(x => x.cause === old)){ n.cause = name; await DB.put("notes", n); }
+    }
+    toast("変更しました");
+  } else {
+    list.push({ k: name, d: desc });
+    state.prefs.causes = list; savePrefs();
+    toast(`「${name}」を追加しました`);
+  }
+  afterCauseChange();
+}
+async function deleteCauseModal(){
+  const list = causes().filter(c => c.k !== causeEditKey);
+  if (!list.length){ toast("項目を全部は消せません"); return; }
+  const used = state.notes.filter(n => n.cause === causeEditKey).length;
+  const msg = used
+    ? `「${causeEditKey}」を項目から消します。登録した${used}問はそのまま残り、原因の表示も残ります。よろしいですか？`
+    : `「${causeEditKey}」を削除します。よろしいですか？`;
+  if (!confirm(msg)) return;
+  state.prefs.causes = list; savePrefs();
+  toast("削除しました");
+  afterCauseChange();
+}
+function resetCauses(){
+  if (!confirm("「なぜ間違えた？」の項目を最初の6個に戻します。登録ずみのミスの原因はそのまま残ります。")) return;
+  state.prefs.causes = null; savePrefs();
+  afterCauseChange();
+  toast("戻しました");
+}
+function afterCauseChange(){
+  closeModals();
+  // 消した／名前を変えた項目が下書きに残らないように
+  if (state.draft.cause && !causes().some(c => c.k === state.draft.cause)) state.draft.cause = null;
+  buildChips();
+  render();
+  openSettings();
+}
+function renderCauses(){
+  const list = causes();
+  $("#cause-count").textContent = `${list.length}個`;
+  $("#cause-manage").innerHTML = list.map(c => `
+    <div class="bk-item">
+      <span class="nm">${esc(c.k)}<small>${esc(c.d || "説明なし")}・${state.notes.filter(n => n.cause === c.k).length}問</small></span>
+      <button class="btn ghost" data-cause="${esc(c.k)}">編集</button>
+    </div>`).join("");
+  $$("#cause-manage [data-cause]").forEach(b => b.onclick = () => openCauseModal(b.dataset.cause));
 }
 
 /* ---------- 追加画面 ---------- */
@@ -1903,13 +2019,39 @@ async function openDetail(id){
    ========================================================= */
 function renderStats(){
   const box = $("#stats-body");
-  const N = state.notes;
+
+  // 参考書ごとに見られるようにする
+  const named = [...new Set(state.notes.map(n => n.book).filter(Boolean))];
+  if (state.statsBook && !named.includes(state.statsBook)) state.statsBook = null;
+  const known = booksBySubject()
+    .map(([sub, list]) => [sub, list.map(b => b.name).filter(n => named.includes(n))])
+    .filter(([, list]) => list.length);
+  const orphan = named.filter(n => !bookByName(n));
+  if (orphan.length) known.push(["登録なし", orphan]);
+  $("#stats-book").innerHTML = named.length
+    ? `<button class="chip small" type="button" data-v="" aria-pressed="${!state.statsBook}">ぜんぶ</button>`
+      + known.map(([sub, list]) =>
+          `<span class="brk"></span><span class="sc-sub">${esc(sub)}</span>`
+          + list.map(b => `<button class="chip small" type="button" data-v="${esc(b)}" aria-pressed="${state.statsBook === b}">📕 ${esc(b)}</button>`).join("")
+        ).join("")
+    : "";
+
+  const scope = state.statsBook;
+  const N = scope ? state.notes.filter(n => n.book === scope) : state.notes;
+  $("#stats-title").textContent = scope || "分析";
+  $("#stats-sub").textContent = scope
+    ? "この参考書のミスだけで見ています。"
+    : "自分のミスのクセを数字で見る。";
+
   if (!N.length){
-    box.innerHTML = `<div class="card empty"><div class="big">📊</div><h3>データがまだありません</h3><p>10問くらいたまると、自分のクセが見えてきます。</p></div>`;
+    box.innerHTML = scope
+      ? `<div class="card empty"><div class="big">📕</div><h3>この参考書のミスはまだありません</h3></div>`
+      : `<div class="card empty"><div class="big">📊</div><h3>データがまだありません</h3><p>10問くらいたまると、自分のクセが見えてきます。</p></div>`;
     return;
   }
+  const t0 = today();
   const mastered = N.filter(n => n.mastered).length;
-  const dueToday = dueNotes().length;
+  const dueToday = N.filter(n => !n.mastered && startOfDay(n.dueAt) <= t0).length;
   const tries = N.flatMap(n => (n.history || []).filter(h => !h.retry));
   const okRate = tries.length ? Math.round(tries.filter(h => h.ok).length / tries.length * 100) : null;
 
@@ -1949,13 +2091,14 @@ function renderStats(){
       ${table(byCause, "原因")}
     </div>
 
+    ${scope ? "" : `
     <div class="card">
       <b style="font-size:14px">教科ごとのミス</b>
       <div class="bars">${bars(bySubject, N.length, false)}</div>
       ${table(bySubject, "教科")}
-    </div>
+    </div>`}
 
-    ${byBook.length ? `
+    ${!scope && byBook.length ? `
     <div class="card">
       <b style="font-size:14px">参考書ごとのミス</b>
       <p class="muted" style="margin:2px 0 0">参考書を選んで登録した ${withBook.length}問 の内訳</p>
@@ -2009,6 +2152,7 @@ function table(entries, head){
     <tbody>${entries.map(([k,v]) => `<tr><td>${esc(k)}</td><td class="n">${v}</td></tr>`).join("")}</tbody></table></details>`;
 }
 function causeAdvice(c){
+  const own = causes().find(x => x.k === c);
   return ({
     "計算ミス":   "解き方より、途中式の書き方を見直すほうが点が伸びます。",
     "覚えてない": "暗記の量ではなく、思い出す回数が足りていません。復習を切らさないこと。",
@@ -2017,7 +2161,7 @@ function causeAdvice(c){
     "詰めが甘い": "答えを出したあとの検算・単位確認を手順に組み込みましょう。",
     "時間切れ":   "難易度ではなく時間配分の問題。捨てる判断の練習を。",
     "未分類":     "原因をタップして登録すると、ここに対策が出ます。",
-  })[c] || "この原因が減れば、点数はまとまって上がります。";
+  })[c] || (own && own.d) || "この原因が減れば、点数はまとまって上がります。";
 }
 
 /* =========================================================
@@ -2060,6 +2204,11 @@ async function importFile(file){
       const have = new Set(books().map(b => b.id));
       const add = incoming.filter(b => b && b.id && b.name && !have.has(b.id));
       if (add.length){ state.prefs.books = [...books(), ...add]; savePrefs(); }
+    }
+    // 「なぜ間違えた？」を自分で編集していた場合も、こちらが初期値のままなら引き継ぐ
+    const inCauses = data.prefs?.causes;
+    if (Array.isArray(inCauses) && inCauses.length && !Array.isArray(state.prefs.causes)){
+      state.prefs.causes = inCauses; savePrefs(); buildChips();
     }
     state.notes = await DB.all("notes");
     urlCache.clear();
@@ -2123,6 +2272,7 @@ function openSettings(){
   $("#in-cap").value = state.prefs.cap;
   $("#cap-val").textContent = state.prefs.cap + "問";
   renderBooks();
+  renderCauses();
   $("#modal-settings").classList.add("open");
   renderStorage();
 }
@@ -2163,6 +2313,12 @@ function bindUI(){
     state.filter.book = state.filter.book === b.dataset.v ? null : b.dataset.v;
     renderList();
   };
+  $("#stats-book").onclick = e => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    state.statsBook = b.dataset.v || null;
+    renderStats();
+    window.scrollTo({ top: 0 });
+  };
 
   // 参考書
   $("#btn-book-add").onclick = () => openBookModal(null, true);
@@ -2202,6 +2358,13 @@ function bindUI(){
     if (e.target.closest("#book-page-row")) return;
     closeKeypad();
   });
+
+  // なぜ間違えた？の項目
+  $("#btn-cause-add").onclick = () => openCauseModal(null);
+  $("#btn-cause-save").onclick = saveCauseModal;
+  $("#btn-cause-del").onclick = deleteCauseModal;
+  $("#btn-cause-reset").onclick = resetCauses;
+  $("#in-cause-name").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); saveCauseModal(); } };
 
   // 設定
   $("#btn-settings").onclick = openSettings;
