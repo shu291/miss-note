@@ -142,6 +142,27 @@ a.btn{text-decoration:none;color:inherit}
 }
 .chip[aria-pressed="true"]{background:var(--accent);border-color:transparent;color:var(--on-accent);font-weight:600}
 .chip.small{padding:5px 10px;font-size:12px;min-height:0}
+.chip.new{border-style:dashed;color:var(--ink-2)}
+
+/* 参考書ショートカット */
+.sc-head{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 7px}
+.shortcuts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.sc-btn{
+  display:inline-flex;align-items:center;gap:7px;min-height:44px;cursor:pointer;
+  border:1px solid var(--ring);background:var(--surface);box-shadow:var(--shadow);
+  border-radius:13px;padding:10px 14px;font-size:13.5px;font-weight:600;color:var(--ink);
+}
+.sc-btn:active{transform:translateY(1px)}
+.sc-btn .plus{font-size:16px;line-height:1;color:var(--accent)}
+.sc-btn .n{font-size:11px;font-weight:600;color:var(--muted)}
+.sc-btn.add{background:transparent;box-shadow:none;border-style:dashed;color:var(--ink-2);font-weight:500}
+.sc-btn.add .plus{color:var(--ink-2)}
+.book-row{margin-top:8px}
+.bk-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.bk-item:first-child{border-top:none;padding-top:0}
+.bk-item .nm{flex:1;min-width:0;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-item .nm small{display:block;font-size:11px;font-weight:500;color:var(--muted)}
+.bk-item .btn{min-height:34px;padding:6px 11px;font-size:12px}
 
 label.field{display:block;margin-top:14px}
 label.field > span{display:block;font-size:12px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
@@ -347,6 +368,14 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
         <input type="file" accept="image/*" id="file-input" class="visually-hidden">
 
         <label class="field">
+          <span>参考書 <span class="opt">（選ぶと教科も自動で入ります）</span></span>
+        </label>
+        <div class="chips" id="chips-book"></div>
+        <div class="book-row" id="book-page-row" hidden>
+          <input type="text" id="in-page" placeholder="ページ・問題番号（例：p.132 問5）" autocomplete="off" maxlength="30">
+        </div>
+
+        <label class="field">
           <span>教科</span>
         </label>
         <div class="chips" id="chips-subject"></div>
@@ -357,8 +386,8 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
         <div class="chips" id="chips-cause"></div>
 
         <label class="field">
-          <span>単元・出典 <span class="opt">（任意）</span></span>
-          <input type="text" id="in-unit" placeholder="例：三角関数 / 青チャート p.132" list="unit-list" autocomplete="off">
+          <span>単元 <span class="opt">（任意）</span></span>
+          <input type="text" id="in-unit" placeholder="例：三角関数 / 電磁誘導" list="unit-list" autocomplete="off">
           <datalist id="unit-list"></datalist>
         </label>
 
@@ -384,6 +413,7 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
         <button data-v="mastered" aria-pressed="false">定着ずみ</button>
       </div>
       <div class="chips" id="filter-subject" style="margin-top:10px"></div>
+      <div class="chips" id="filter-book" style="margin-top:8px"></div>
       <div id="list-body"></div>
     </section>
 
@@ -432,6 +462,29 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
   <div class="sheet" id="detail-sheet"></div>
 </div>
 
+<!-- ============ book modal ============ -->
+<div class="modal" id="modal-book" role="dialog" aria-modal="true" aria-label="参考書">
+  <div class="scrim" data-close></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 id="book-title">参考書を登録</h3>
+    <p class="muted" style="margin:0 0 4px" id="book-lead">よく使う問題集を登録しておくと、ワンタップで撮影に入れます。</p>
+    <label class="field">
+      <span>参考書の名前</span>
+      <input type="text" id="in-book-name" placeholder="例：青チャート数学ⅠA / 重要問題集 物理" autocomplete="off" maxlength="40">
+    </label>
+    <label class="field">
+      <span>教科 <span class="opt">（この参考書で登録したミスに自動で入ります）</span></span>
+    </label>
+    <div class="chips" id="chips-book-subject"></div>
+    <div class="btn-row" style="margin-top:20px">
+      <button class="btn ghost" data-close>やめる</button>
+      <button class="btn primary" id="btn-book-save">保存</button>
+    </div>
+    <button class="btn danger wide" id="btn-book-del" style="margin-top:10px" hidden>この参考書を削除</button>
+  </div>
+</div>
+
 <!-- ============ settings modal ============ -->
 <div class="modal" id="modal-settings" role="dialog" aria-modal="true" aria-label="設定">
   <div class="scrim" data-close></div>
@@ -439,6 +492,13 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
     <div class="handle"></div>
     <h3>設定</h3>
     <p class="muted" style="margin:0 0 14px">データはこの端末の中だけに保存されます（サーバー送信なし）。</p>
+
+    <div class="card">
+      <div class="row-between"><b style="font-size:14px">参考書</b><span class="muted" id="book-count">—</span></div>
+      <p class="muted" style="margin:6px 0 0">登録しておくと、追加画面と復習おわりの画面に<b>ワンタップで撮影に入れるボタン</b>が出ます。教科も自動で入ります。</p>
+      <div id="book-manage" style="margin-top:12px"></div>
+      <button class="btn ghost wide" id="btn-book-add" style="margin-top:12px">＋ 参考書を登録</button>
+    </div>
 
     <div class="card">
       <div class="row-between"><b style="font-size:14px">1日の復習の上限</b><span id="cap-val" class="muted">20問</span></div>
@@ -573,12 +633,16 @@ const DB = (() => {
 const state = {
   view: "review",
   notes: [],                  // 画像は blob 別管理
-  prefs: { cap: 20, theme: "auto", lastExportAt: null, backupHiddenUntil: null, installHidden: false },
+  prefs: {
+    cap: 20, theme: "auto", lastExportAt: null, backupHiddenUntil: null, installHidden: false,
+    books: [],          // [{id, name, subject, createdAt}] 参考書＝ミスの置き場所
+    lastBook: null,     // 前回ここに登録した参考書（次回も最初から選んでおく）
+  },
   queue: [], qi: 0, retryPass: false,
   revealed: false,
   sessionDone: 0, sessionTotal: 0,
-  draft: { qImg: null, aImg: null, subject: null, cause: null },
-  filter: { status: "all", subject: null },
+  draft: { qImg: null, aImg: null, subject: null, cause: null, bookId: null },
+  filter: { status: "all", subject: null, book: null },
 };
 const urlCache = new Map();
 async function imgURL(id){
@@ -662,6 +726,8 @@ async function refURL(note){
     console.error(e);
     toast("保存領域を開けませんでした");
   }
+  if (!Array.isArray(state.prefs.books)) state.prefs.books = [];   // 参考書を知らない頃の設定から来た場合
+  if (bookById(state.prefs.lastBook)) selectBook(state.prefs.lastBook, { silent:true });
   applyTheme();
   buildChips();
   bindUI();
@@ -674,6 +740,49 @@ async function refURL(note){
 })();
 
 function savePrefs(){ DB.put("prefs", { k:"settings", v: state.prefs }); }
+
+/* =========================================================
+   参考書
+   ノート側は bookId（絞り込み用）と book（名前）の両方を持つ。
+   名前も焼いておくので、参考書を消しても「どの本の問題だったか」は残る。
+   ========================================================= */
+function books(){ return state.prefs.books || []; }
+function bookById(id){ return id ? books().find(b => b.id === id) || null : null; }
+function bookCount(id){ return state.notes.filter(n => n.bookId === id).length; }
+
+function addBook(name, subject){
+  const b = { id: uid(), name, subject: subject || null, createdAt: Date.now() };
+  state.prefs.books = [...books(), b];
+  savePrefs();
+  return b;
+}
+async function renameBook(id, name, subject){
+  const b = bookById(id);
+  if (!b) return;
+  b.name = name; b.subject = subject || null;
+  savePrefs();
+  // ノートに焼いてある名前も直す
+  for (const n of state.notes.filter(x => x.bookId === id)){
+    n.book = name;
+    await DB.put("notes", n);
+  }
+}
+function removeBook(id){
+  state.prefs.books = books().filter(b => b.id !== id);
+  if (state.prefs.lastBook === id) state.prefs.lastBook = null;
+  if (state.draft.bookId === id) state.draft.bookId = null;
+  savePrefs();
+  // ノートは消さない。n.book に名前が残るので一覧・分析にはそのまま出る。
+}
+
+/* 追加画面で「この参考書に入れる」状態にする（教科も自動で決まる＝ショートカットの本体） */
+function selectBook(id, opt = {}){
+  state.draft.bookId = id || null;
+  const b = bookById(id);
+  if (b && b.subject) state.draft.subject = b.subject;
+  state.prefs.lastBook = id || null;
+  if (!opt.silent){ savePrefs(); syncChips(); }
+}
 
 /* ---------- 保存領域 ----------
    Chrome はディスクがほぼ満杯のとき、古いサイトのデータから消す。
@@ -844,6 +953,7 @@ function go(v){
 }
 function render(){
   if (state.view === "review") renderReview();
+  if (state.view === "add")    renderAdd();
   if (state.view === "list")   renderList();
   if (state.view === "stats")  renderStats();
   updateBadge();
@@ -858,6 +968,7 @@ async function renderReview(){
 
   if (total === 0){
     box.innerHTML = `
+      ${shortcutRow()}
       <div class="card empty">
         <div class="big">📷</div>
         <h3>まだ1問もありません</h3>
@@ -874,6 +985,7 @@ async function renderReview(){
       </div>
       ${installCard()}`;
     bindBanner();
+    bindShortcuts(box);
     return;
   }
 
@@ -887,6 +999,7 @@ async function renderReview(){
         ? `<p>今日追加した${addedToday}問は、明日から出題されます。</p>`
         : `<p>今日出す問題はありません。</p>`;
     box.innerHTML = `
+      ${shortcutRow({ hideWhenEmpty: true })}
       <div class="card empty">
         <div class="big">${state.sessionTotal > 0 ? "🎉" : "☕"}</div>
         <h3>${state.sessionTotal > 0 ? "今日の復習おわり" : "今日はおやすみ"}</h3>
@@ -901,6 +1014,7 @@ async function renderReview(){
       ${installCard()}
       ${backupBanner()}`;
     bindBanner();
+    bindShortcuts(box);
     return;
   }
 
@@ -923,7 +1037,7 @@ async function renderReview(){
   const qBody = qUrl
     ? `<img src="${qUrl}" alt="問題の写真">`
     : note.ref
-      ? `<div class="q-text">参考書のページを表示できません（教科書側で削除されたかも）</div>`
+      ? `<div class="q-text">じぶん教科書のページを表示できません（教科書側で削除されたかも）</div>`
       : `<div class="q-text">${esc(note.memo || "（写真もメモもありません）")}</div>`;
 
   box.innerHTML = `
@@ -936,12 +1050,13 @@ async function renderReview(){
       <div class="q-wrap">${qBody}</div>
       <div class="meta-row">
         <span class="tagmini">${esc(note.subject || "教科なし")}</span>
+        ${note.book ? `<span class="tagmini">📕 ${esc(note.book)}${note.page ? " " + esc(note.page) : ""}</span>` : ""}
         ${note.ref ? `<span class="tagmini">📖 ${esc(note.ref.bookTitle)}${refPage ? " p." + refPage : ""}</span>` : ""}
         ${note.unit ? `<span class="tagmini">${esc(note.unit)}</span>` : ""}
         <span class="tagmini">登録 ${esc(fmtDate(note.createdAt))}</span>
         ${late < 0 ? `<span class="tagmini cause">${-late}日おくれ</span>` : ""}
       </div>
-      ${note.ref ? `<div style="margin-top:12px"><a class="btn ghost wide" href="${TEXTBOOK_URL}#miss=${encodeURIComponent(note.id)}">📖 参考書で解きにいく（判定もあっちでできる）</a></div>` : ""}
+      ${note.ref ? `<div style="margin-top:12px"><a class="btn ghost wide" href="${TEXTBOOK_URL}#miss=${encodeURIComponent(note.id)}">📖 じぶん教科書で解きにいく（判定もあっちでできる）</a></div>` : ""}
       <div id="answer-slot"></div>
     </div>`;
 
@@ -1024,12 +1139,134 @@ function buildChips(){
     state.draft.cause = state.draft.cause === b.dataset.v ? null : b.dataset.v;
     syncChips();
   };
+  $("#chips-book").onclick = e => {
+    if (e.target.closest("[data-new]")){ openBookModal(null); return; }
+    const b = e.target.closest(".chip"); if (!b) return;
+    selectBook(state.draft.bookId === b.dataset.v ? null : b.dataset.v);
+  };
+  buildBookChips();
+}
+function buildBookChips(){
+  $("#chips-book").innerHTML =
+    books().map(b => `<button class="chip" type="button" aria-pressed="false" data-v="${esc(b.id)}">${esc(b.name)}</button>`).join("")
+    + `<button class="chip new" type="button" data-new="1">＋ 参考書</button>`;
   syncChips();
 }
 function syncChips(){
   $$("#chips-subject .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.draft.subject)));
   $$("#chips-cause .chip").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.draft.cause)));
+  $$("#chips-book .chip[data-v]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.draft.bookId)));
+  // ページ番号は参考書を選んでいるときだけ聞く
+  const row = $("#book-page-row");
+  if (row) row.hidden = !state.draft.bookId;
 }
+
+/* ---------- ショートカット（押すとすぐ撮影に入る） ---------- */
+function shortcutRow(opt = {}){
+  const bs = books();
+  if (!bs.length){
+    if (opt.hideWhenEmpty) return "";
+    return `
+      <p class="sc-head">ショートカット</p>
+      <div class="shortcuts">
+        <button class="sc-btn add" type="button" data-new="1"><span class="plus">＋</span>参考書を登録する</button>
+      </div>`;
+  }
+  return `
+    <p class="sc-head">ショートカット — 押すとそのまま撮影</p>
+    <div class="shortcuts">
+      ${bs.map(b => `<button class="sc-btn" type="button" data-sc="${esc(b.id)}">
+        <span class="plus">＋</span>${esc(b.name)}<span class="n">${bookCount(b.id)}</span></button>`).join("")}
+      <button class="sc-btn add" type="button" data-new="1"><span class="plus">＋</span>参考書</button>
+    </div>`;
+}
+function bindShortcuts(root){
+  $$("[data-sc]", root).forEach(b => b.onclick = () => startShortcut(b.dataset.sc));
+  $$(".sc-btn[data-new]", root).forEach(b => b.onclick = () => openBookModal(null));
+}
+/* 参考書と教科を決めた状態で追加画面に入り、そのまま写真選択を開く。
+   ここまで同期処理でつなぐこと（await をはさむと Safari がカメラを開かない）。 */
+function startShortcut(id){
+  selectBook(id);
+  state.draft.cause = null;
+  go("add");
+  crop.target = "q";
+  $("#file-input").click();
+}
+
+/* ---------- 参考書の登録・編集 ---------- */
+let bookEditId = null, bookFromSettings = false;
+function openBookModal(id, fromSettings = false){
+  bookEditId = id;
+  bookFromSettings = fromSettings;
+  closeModals();
+  const b = bookById(id);
+  $("#book-title").textContent = b ? "参考書を編集" : "参考書を登録";
+  $("#book-lead").textContent = b
+    ? `この参考書のミス ${bookCount(b.id)}問。名前を変えても登録ずみのミスはついてきます。`
+    : "よく使う問題集を登録しておくと、ワンタップで撮影に入れます。";
+  $("#in-book-name").value = b ? b.name : "";
+  $("#chips-book-subject").innerHTML = SUBJECTS
+    .map(s => `<button class="chip" type="button" data-v="${esc(s)}" aria-pressed="${b && b.subject === s}">${esc(s)}</button>`).join("");
+  $("#btn-book-del").hidden = !b;
+  $("#modal-book").classList.add("open");
+  setTimeout(() => $("#in-book-name").focus(), 60);
+}
+function bookModalSubject(){
+  const on = $("#chips-book-subject .chip[aria-pressed='true']");
+  return on ? on.dataset.v : null;
+}
+async function saveBookModal(){
+  const name = $("#in-book-name").value.trim();
+  if (!name){ toast("参考書の名前を入れてください"); return; }
+  const subject = bookModalSubject();
+  if (bookEditId){
+    await renameBook(bookEditId, name, subject);
+    toast("変更しました");
+  } else {
+    const dup = books().find(b => b.name === name);
+    if (dup){ toast("同じ名前の参考書があります"); selectBook(dup.id); closeModals(); return; }
+    const b = addBook(name, subject);
+    selectBook(b.id);
+    toast(`「${name}」を登録しました`);
+  }
+  closeModals();
+  refreshBookUI();
+}
+async function deleteBookModal(){
+  const b = bookById(bookEditId);
+  if (!b) return;
+  const n = bookCount(b.id);
+  const msg = n
+    ? `「${b.name}」を一覧から消します。登録した${n}問はそのまま残り、本の名前も表示されます。よろしいですか？`
+    : `「${b.name}」を削除します。よろしいですか？`;
+  if (!confirm(msg)) return;
+  removeBook(b.id);
+  closeModals();
+  refreshBookUI();
+  toast("削除しました");
+}
+function refreshBookUI(){
+  buildBookChips();
+  render();                       // 一覧・分析・復習の表示を作り直す
+  if (bookFromSettings) openSettings();
+  bookFromSettings = false;
+}
+function renderBooks(){
+  const bs = books();
+  $("#book-count").textContent = bs.length ? `${bs.length}冊` : "まだ0冊";
+  $("#book-manage").innerHTML = bs.length
+    ? bs.map(b => `
+      <div class="bk-item">
+        <span class="nm">${esc(b.name)}<small>${esc(b.subject || "教科なし")}・${bookCount(b.id)}問</small></span>
+        <button class="btn ghost" data-edit="${esc(b.id)}">編集</button>
+      </div>`).join("")
+    : `<p class="muted" style="margin:0">まだ登録がありません。「重要問題集」「青チャート」のように、ミスを入れたい本の名前を登録してください。</p>`;
+  $$("#book-manage [data-edit]").forEach(b => b.onclick = () => openBookModal(b.dataset.edit, true));
+}
+
+/* ---------- 追加画面 ---------- */
+function renderAdd(){ buildBookChips(); }
 function refreshUnitList(){
   const units = [...new Set(state.notes.map(n => n.unit).filter(Boolean))].slice(0, 40);
   $("#unit-list").innerHTML = units.map(u => `<option value="${esc(u)}">`).join("");
@@ -1043,12 +1280,16 @@ async function saveNote(){
   }
   const btn = $("#btn-save");
   btn.disabled = true;
+  const book = bookById(state.draft.bookId);
   try {
     const note = {
       id: uid(),
       createdAt: Date.now(),
       subject: state.draft.subject || "その他",
       cause: state.draft.cause || "未分類",
+      bookId: book ? book.id : null,
+      book: book ? book.name : "",          // 参考書を消しても残るように名前も持たせる
+      page: book ? $("#in-page").value.trim() : "",
       unit: $("#in-unit").value.trim(),
       memo,
       qImg: null, aImg: null,
@@ -1071,8 +1312,14 @@ async function saveNote(){
     state.notes.push(note);
     resetDraft();
     refreshUnitList();
-    toast(`登録しました → 明日また出ます`);
-    go("review");
+    if (book){
+      // 参考書に入れたときは画面を動かさない。そのまま次の1問を撮れる。
+      renderAdd();
+      toast(`${book.name} に ${bookCount(book.id)}問目を登録しました`);
+    } else {
+      toast(`登録しました → 明日また出ます`);
+      go("review");
+    }
   } catch (e){
     console.error(e);
     toast("保存に失敗しました");
@@ -1081,7 +1328,9 @@ async function saveNote(){
   }
 }
 function resetDraft(){
-  state.draft = { qImg:null, aImg:null, subject: state.draft.subject, cause:null };
+  // 参考書と教科は残す（同じ本から続けて登録するため）。ページ番号は問題ごとに違うので消す。
+  state.draft = { qImg:null, aImg:null, subject: state.draft.subject, cause:null, bookId: state.draft.bookId };
+  $("#in-page").value = "";
   $("#in-unit").value = "";
   $("#in-memo").value = "";
   paintShot("q", null); paintShot("a", null);
@@ -1233,10 +1482,17 @@ function renderList(){
     ? subs.map(s => `<button class="chip small" type="button" data-v="${esc(s)}" aria-pressed="${state.filter.subject === s}">${esc(s)}</button>`).join("")
     : "";
 
+  // 参考書は名前で絞る（消した参考書の問題もそのまま探せる）
+  const bks = [...new Set(state.notes.map(n => n.book).filter(Boolean))];
+  $("#filter-book").innerHTML = bks.length
+    ? bks.map(b => `<button class="chip small" type="button" data-v="${esc(b)}" aria-pressed="${state.filter.book === b}">📕 ${esc(b)}</button>`).join("")
+    : "";
+
   let list = state.notes.slice().sort((a,b) => b.createdAt - a.createdAt);
   if (state.filter.status === "active")   list = list.filter(n => !n.mastered);
   if (state.filter.status === "mastered") list = list.filter(n => n.mastered);
   if (state.filter.subject) list = list.filter(n => n.subject === state.filter.subject);
+  if (state.filter.book)    list = list.filter(n => n.book === state.filter.book);
 
   $("#list-count").textContent =
     `全${state.notes.length}問 ／ 復習中 ${state.notes.filter(n=>!n.mastered).length} ・ 定着ずみ ${state.notes.filter(n=>n.mastered).length}`;
@@ -1251,6 +1507,7 @@ function renderList(){
       <div class="body">
         <div class="l1"><span class="dot" style="background:${n.mastered ? "var(--good)" : "var(--accent)"}"></span>${esc(n.subject)}</div>
         <div class="l2">${n.mastered ? "定着ずみ" : "次 " + esc(relDay(n.dueAt))}・${esc(n.cause)}</div>
+        ${n.book ? `<div class="l2">📕 ${esc(n.book)}${n.page ? " " + esc(n.page) : ""}</div>` : ""}
       </div>
     </button>`).join("") + `</div>`;
 
@@ -1285,6 +1542,7 @@ async function openDetail(id){
     <div class="handle"></div>
     <div class="row-between"><h3>${esc(n.subject)}${n.unit ? " ／ " + esc(n.unit) : ""}</h3></div>
     <div class="meta-row" style="margin-top:2px;margin-bottom:12px">
+      ${n.book ? `<span class="tagmini">📕 ${esc(n.book)}${n.page ? " " + esc(n.page) : ""}</span>` : ""}
       <span class="tagmini cause">${esc(n.cause)}</span>
       <span class="tagmini">${n.mastered ? "定着ずみ" : "次の復習 " + esc(relDay(n.dueAt))}</span>
       <span class="tagmini">登録 ${esc(fmtDate(n.createdAt))}</span>
@@ -1294,7 +1552,7 @@ async function openDetail(id){
     ${n.memo ? `<div class="card" style="white-space:pre-wrap;font-size:14px">${esc(n.memo)}</div>` : ""}
     ${aUrl ? `<div class="q-wrap" style="margin-top:10px"><img src="${aUrl}" alt="解答"></div>` : ""}
     ${hist ? `<div class="hist">${hist}</div>` : ""}
-    ${n.ref ? `<a class="btn ghost wide" style="margin-top:12px" href="${TEXTBOOK_URL}#miss=${encodeURIComponent(n.id)}">📖 参考書で開く</a>` : ""}
+    ${n.ref ? `<a class="btn ghost wide" style="margin-top:12px" href="${TEXTBOOK_URL}#miss=${encodeURIComponent(n.id)}">📖 じぶん教科書で開く</a>` : ""}
     <div class="btn-row" style="margin-top:16px">
       <button class="btn" id="d-now">今すぐ復習に入れる</button>
       <button class="btn ghost" id="d-reset">最初からやり直す</button>
@@ -1343,6 +1601,8 @@ function renderStats(){
   const byCause = tally(N, n => n.cause);
   const bySubject = tally(N, n => n.subject);
   const causeTop = byCause[0];
+  const withBook = N.filter(n => n.book);
+  const byBook = tally(withBook, n => n.book);
 
   // 直近14日の登録数
   const days = [];
@@ -1380,6 +1640,14 @@ function renderStats(){
       ${table(bySubject, "教科")}
     </div>
 
+    ${byBook.length ? `
+    <div class="card">
+      <b style="font-size:14px">参考書ごとのミス</b>
+      <p class="muted" style="margin:2px 0 0">参考書を選んで登録した ${withBook.length}問 の内訳</p>
+      <div class="bars">${bars(byBook, withBook.length, false)}</div>
+      ${table(byBook, "参考書")}
+    </div>` : ""}
+
     <div class="card">
       <b style="font-size:14px">この2週間の登録数</b>
       <p class="muted" style="margin:2px 0 0">記録し続けられているかを見る</p>
@@ -1395,7 +1663,7 @@ function renderStats(){
       <p class="muted" style="margin:2px 0 8px">2回以上ミスしたもの。ここが本当の弱点です。</p>
       ${weak.map(w => `
         <button class="btn wide ghost" style="justify-content:space-between;margin-top:6px" data-jump="${w.n.id}">
-          <span style="font-weight:600">${esc(w.n.subject)}${w.n.unit ? " / " + esc(w.n.unit) : ""}</span>
+          <span style="font-weight:600">${esc(w.n.subject)}${w.n.book ? " / 📕" + esc(w.n.book) + (w.n.page ? " " + esc(w.n.page) : "") : (w.n.unit ? " / " + esc(w.n.unit) : "")}</span>
           <span class="muted">${w.miss}回ミス</span>
         </button>`).join("")}
     </div>` : ""}`;
@@ -1468,9 +1736,16 @@ async function importFile(file){
       await DB.put("images", { id: im.id, blob });
     }
     for (const n of data.notes) await DB.put("notes", n);
+    // 参考書の一覧も引き継ぐ（機種変更でショートカットごと移せるように）
+    const incoming = Array.isArray(data.prefs?.books) ? data.prefs.books : [];
+    if (incoming.length){
+      const have = new Set(books().map(b => b.id));
+      const add = incoming.filter(b => b && b.id && b.name && !have.has(b.id));
+      if (add.length){ state.prefs.books = [...books(), ...add]; savePrefs(); }
+    }
     state.notes = await DB.all("notes");
     urlCache.clear();
-    buildQueue(); render(); closeModals();
+    buildQueue(); buildBookChips(); render(); closeModals();
     toast(`${data.notes.length}問を読み込みました`);
   } catch (e){
     console.error(e);
@@ -1526,6 +1801,14 @@ async function renderStorage(){
    ========================================================= */
 function closeModals(){ $$(".modal").forEach(m => m.classList.remove("open")); }
 
+function openSettings(){
+  $("#in-cap").value = state.prefs.cap;
+  $("#cap-val").textContent = state.prefs.cap + "問";
+  renderBooks();
+  $("#modal-settings").classList.add("open");
+  renderStorage();
+}
+
 function bindUI(){
   $$("nav.tabs .t").forEach(b => b.onclick = () => go(b.dataset.view));
 
@@ -1557,13 +1840,26 @@ function bindUI(){
     renderList();
   };
 
-  // 設定
-  $("#btn-settings").onclick = () => {
-    $("#in-cap").value = state.prefs.cap;
-    $("#cap-val").textContent = state.prefs.cap + "問";
-    $("#modal-settings").classList.add("open");
-    renderStorage();
+  $("#filter-book").onclick = e => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    state.filter.book = state.filter.book === b.dataset.v ? null : b.dataset.v;
+    renderList();
   };
+
+  // 参考書
+  $("#btn-book-add").onclick = () => openBookModal(null, true);
+  $("#btn-book-save").onclick = saveBookModal;
+  $("#btn-book-del").onclick = deleteBookModal;
+  $("#chips-book-subject").onclick = e => {
+    const b = e.target.closest(".chip"); if (!b) return;
+    const on = b.getAttribute("aria-pressed") === "true";
+    $$("#chips-book-subject .chip").forEach(x => x.setAttribute("aria-pressed", "false"));
+    b.setAttribute("aria-pressed", String(!on));
+  };
+  $("#in-book-name").onkeydown = e => { if (e.key === "Enter"){ e.preventDefault(); saveBookModal(); } };
+
+  // 設定
+  $("#btn-settings").onclick = openSettings;
   $("#in-cap").oninput = e => {
     state.prefs.cap = +e.target.value;
     $("#cap-val").textContent = state.prefs.cap + "問";
