@@ -180,7 +180,29 @@ a.btn{text-decoration:none;color:inherit}
   padding:12px;outline:none;font-size:17px;font-weight:600;text-align:center;
   font-variant-numeric:tabular-nums;
 }
-.numfield input:focus{border-color:var(--bar);box-shadow:0 0 0 3px var(--bar-soft)}
+.numfield input:focus,
+.numfield input.kp-on{border-color:var(--bar);box-shadow:0 0 0 3px var(--bar-soft)}
+
+/* アプリ内キーパッド（iPad では OS の数字入力が10キーにならないので自前で出す） */
+.keypad{margin-top:12px;background:var(--surface-2);border:1px solid var(--ring);border-radius:14px;padding:10px}
+.keypad[hidden]{display:none}
+.kp-head{display:flex;align-items:center;font-size:12px;font-weight:600;color:var(--ink-2);margin:2px 4px 9px}
+.kp-head b{color:var(--bar)}
+.kp-head .spacer{flex:1}
+.kp-head button{
+  background:transparent;border:1px solid var(--line);border-radius:9px;
+  padding:5px 11px;font-size:12px;font-weight:600;color:var(--ink-2);cursor:pointer;
+}
+.kp-keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kp-keys button{
+  min-height:54px;border:1px solid var(--ring);background:var(--surface);border-radius:12px;
+  font-size:23px;font-weight:600;cursor:pointer;font-variant-numeric:tabular-nums;
+  box-shadow:0 1px 1px rgba(0,0,0,.04);
+}
+.kp-keys button:active{background:var(--surface-2);transform:translateY(1px)}
+.kp-keys button.sub{font-size:19px;color:var(--ink-2)}
+.kp-keys button.go{background:var(--accent);border-color:transparent;color:var(--on-accent);font-size:15px}
+
 #page-quick{margin-top:9px}
 #page-quick:empty{display:none}
 .chip.quick{background:var(--bar-soft);border-color:transparent;color:var(--bar);font-weight:600}
@@ -400,7 +422,10 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
   .chip{padding:9px 14px;font-size:14px}
   .chip.small{padding:6px 12px;font-size:13px}
   .sc-btn{min-height:50px;font-size:15px;padding:12px 17px}
-  .numfield input{font-size:19px;padding:14px}
+  .numfield input{font-size:20px;padding:15px}
+  .kp-keys button{min-height:62px;font-size:26px}
+  .kp-keys button.sub{font-size:22px}
+  .kp-keys button.go{font-size:17px}
   .shot{aspect-ratio:3/2}
 
   /* 下タブは残したまま、中央に寄せて大きく */
@@ -463,12 +488,33 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
         <div id="book-page-row" hidden>
           <div class="numrow">
             <label class="numfield"><span>ページ</span>
-              <input type="text" id="in-pageno" inputmode="numeric" pattern="[0-9]*" placeholder="132" maxlength="5" autocomplete="off">
+              <input type="text" id="in-pageno" inputmode="none" placeholder="132" maxlength="5" autocomplete="off">
             </label>
             <label class="numfield"><span>問題番号</span>
-              <input type="text" id="in-qno" inputmode="numeric" pattern="[0-9]*" placeholder="5" maxlength="5" autocomplete="off">
+              <input type="text" id="in-qno" inputmode="none" placeholder="5" maxlength="5" autocomplete="off">
             </label>
           </div>
+
+          <div class="keypad" id="keypad" hidden>
+            <div class="kp-head"><b id="kp-target">ページ</b>&nbsp;を入力中<span class="spacer"></span>
+              <button type="button" data-kp="close">閉じる</button>
+            </div>
+            <div class="kp-keys" id="kp-keys">
+              <button type="button" data-kp="1">1</button>
+              <button type="button" data-kp="2">2</button>
+              <button type="button" data-kp="3">3</button>
+              <button type="button" data-kp="4">4</button>
+              <button type="button" data-kp="5">5</button>
+              <button type="button" data-kp="6">6</button>
+              <button type="button" data-kp="7">7</button>
+              <button type="button" data-kp="8">8</button>
+              <button type="button" data-kp="9">9</button>
+              <button type="button" class="sub" data-kp="back" aria-label="1文字消す">⌫</button>
+              <button type="button" data-kp="0">0</button>
+              <button type="button" class="go" id="kp-next" data-kp="next">次へ</button>
+            </div>
+          </div>
+
           <div class="chips" id="page-quick"></div>
         </div>
 
@@ -1076,6 +1122,7 @@ async function answer(note, ok){
    画面切り替え
    ========================================================= */
 function go(v){
+  if (v !== "add") closeKeypad();
   state.view = v;
   $$(".view").forEach(s => s.classList.toggle("active", s.id === "view-" + v));
   $$("nav.tabs .t").forEach(b => b.setAttribute("aria-current", b.dataset.view === v ? "page" : "false"));
@@ -1296,7 +1343,40 @@ function syncChips(){
   // ページ番号は参考書を選んでいるときだけ聞く
   const row = $("#book-page-row");
   if (row) row.hidden = !state.draft.bookId;
+  if (!state.draft.bookId) closeKeypad();
   renderPageQuick();
+}
+
+/* ---------- アプリ内キーパッド ----------
+   iPad の OS キーボードは inputmode="numeric" でも10キーにならないので、
+   入力欄は inputmode="none"（OSキーボードを出さない）にして自前のキーパッドを出す。
+   物理キーボードからの入力はそのまま効く。 */
+let kpField = null;
+function openKeypad(id){
+  kpField = id;
+  $("#kp-target").textContent = id === "in-pageno" ? "ページ" : "問題番号";
+  $("#kp-next").textContent   = id === "in-pageno" ? "次へ" : "完了";
+  $("#keypad").hidden = false;
+  $("#in-pageno").classList.toggle("kp-on", id === "in-pageno");
+  $("#in-qno").classList.toggle("kp-on", id === "in-qno");
+}
+function closeKeypad(){
+  kpField = null;
+  $("#keypad").hidden = true;
+  $("#in-pageno").classList.remove("kp-on");
+  $("#in-qno").classList.remove("kp-on");
+}
+function keypadPress(k){
+  if (k === "close"){ closeKeypad(); return; }
+  if (!kpField) return;
+  if (k === "next"){
+    if (kpField === "in-pageno"){ openKeypad("in-qno"); $("#in-qno").focus(); }
+    else closeKeypad();
+    return;
+  }
+  const el = $("#" + kpField);
+  if (k === "back") el.value = el.value.slice(0, -1);
+  else if (el.value.length < 5) el.value += k;
 }
 
 /* 同じ本の前回の番号から「つづき」をワンタップで入れられるようにする */
@@ -1507,6 +1587,7 @@ function resetDraft(){
   state.draft = { qImg:null, aImg:null, subject: state.draft.subject, cause:null, bookId: state.draft.bookId };
   $("#in-pageno").value = "";
   $("#in-qno").value = "";
+  closeKeypad();
   $("#in-unit").value = "";
   $("#in-memo").value = "";
   paintShot("q", null); paintShot("a", null);
@@ -2100,7 +2181,27 @@ function bindUI(){
     const b = e.target.closest(".chip"); if (!b) return;
     $("#in-pageno").value = b.dataset.p || "";
     $("#in-qno").value    = b.dataset.q || "";
+    closeKeypad();
   };
+
+  // 数字欄はタップするとアプリ内キーパッドを出す（OSのキーボードは出ない）
+  ["in-pageno", "in-qno"].forEach(id => {
+    const el = $("#" + id);
+    el.addEventListener("focus", () => openKeypad(id));
+    el.addEventListener("click", () => openKeypad(id));
+    el.addEventListener("input", () => { el.value = el.value.replace(/\D/g, "").slice(0, 5); });
+  });
+  $("#kp-keys").onclick = e => {
+    const b = e.target.closest("[data-kp]"); if (!b) return;
+    keypadPress(b.dataset.kp);
+  };
+  $(".kp-head [data-kp]").onclick = () => closeKeypad();
+  // 番号のあたりから離れたら閉じる
+  document.addEventListener("pointerdown", e => {
+    if (!kpField) return;
+    if (e.target.closest("#book-page-row")) return;
+    closeKeypad();
+  });
 
   // 設定
   $("#btn-settings").onclick = openSettings;
