@@ -369,12 +369,6 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
 silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px;overflow:hidden;background:#000}
 .cam-note{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);white-space:nowrap}
 .cam-note b{color:var(--good-text,var(--ink));font-weight:700}
-.pick-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px;border-radius:14px;
-  border:1px solid var(--line);background:var(--surface);cursor:pointer;margin-top:10px}
-.pick-btn .em{font-size:22px;flex:0 0 auto}
-.pick-btn .t1{display:block;font-size:14.5px;font-weight:700;color:var(--ink)}
-.pick-btn .t2{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.55}
-.pick-btn.rec{border-color:var(--accent);background:var(--accent-soft)}
 
 /* cropper */
 .crop-stage{position:relative;background:#111;border-radius:12px;overflow:hidden;touch-action:none;user-select:none;display:grid;place-items:center;max-height:56vh}
@@ -761,30 +755,6 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
   </div>
 </div>
 
-<!-- 写真の追加方法をえらぶ -->
-<div class="modal" id="modal-pick" role="dialog" aria-modal="true" aria-label="写真の追加方法">
-  <div class="scrim" data-close></div>
-  <div class="sheet">
-    <div class="handle"></div>
-    <h3 id="pick-title">問題の写真を追加</h3>
-    <p class="muted" style="margin:0 0 6px">どちらでも、このあと範囲を切り抜けます。</p>
-
-    <button class="pick-btn rec" type="button" id="pick-cam">
-      <span class="em">🔇</span>
-      <span><span class="t1">無音で撮る</span>
-      <span class="t2">シャッター音が鳴りません。聴いている音楽や動画も止まりません。</span></span>
-    </button>
-
-    <button class="pick-btn" type="button" id="pick-file">
-      <span class="em">🖼</span>
-      <span><span class="t1">写真から選ぶ</span>
-      <span class="t2">カメラロールにある写真を使います。</span></span>
-    </button>
-
-    <button class="btn ghost wide" data-close style="margin-top:14px">やめる</button>
-  </div>
-</div>
-
 <!-- 無音カメラ -->
 <div class="modal" id="modal-cam" role="dialog" aria-modal="true" aria-label="無音カメラ">
   <div class="scrim" data-close></div>
@@ -796,6 +766,7 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
     </div>
     <silent-camera id="cam" no-gallery compact></silent-camera>
     <p class="muted" style="margin:8px 0 0;text-align:center">丸いボタンで撮影 → そのまま切り抜きに進みます</p>
+    <button class="btn wide" id="cam-fallback" style="margin-top:10px;display:none">カメラが使えないので写真から選ぶ</button>
     <button class="btn ghost wide" data-close style="margin-top:10px">とじる</button>
   </div>
 </div>
@@ -816,9 +787,9 @@ const INTERVALS = [1, 3, 7, 16, 35];       // 正解するたびに次の段へ
 /* 写真の画質プリセット。max は長辺のピクセル数、q は JPEG の画質。
    ノートの写真は「文字が読めれば十分」なので、既定でもかなり絞ってある。 */
 const IMG_PRESETS = {
-  light: { label:"軽量",   max:1000, q:0.68, approx: 60 * 1024,  note:"1枚 約60KB／文字は読めます。たくさん撮る人向け" },
-  std:   { label:"標準",   max:1400, q:0.80, approx: 140 * 1024, note:"1枚 約140KB／ふつうはこれで足ります" },
-  high:  { label:"高画質", max:2000, q:0.90, approx: 400 * 1024, note:"1枚 約400KB／図やグラフが細かいとき" },
+  light: { label:"軽量",   max:1000, q:0.68, approx:  80 * 1024, note:"1枚 約80KB／文字は読めます。1GBで約6,500問" },
+  std:   { label:"標準",   max:1400, q:0.80, approx: 200 * 1024, note:"1枚 約200KB／ふつうはこれ。1GBで約2,600問" },
+  high:  { label:"高画質", max:2000, q:0.90, approx: 680 * 1024, note:"1枚 約680KB／図が細かいとき。1GBで約770問" },
 };
 const imgPreset = () => IMG_PRESETS[state.prefs.imgQuality] || IMG_PRESETS.std;
 
@@ -907,7 +878,6 @@ const state = {
     cap: 20, theme: "auto", lastExportAt: null, backupHiddenUntil: null, installHidden: false,
     books: [],          // [{id, name, subject, createdAt}] 参考書＝ミスの置き場所
     lastBook: null,     // 前回ここに登録した参考書（次回も最初から選んでおく）
-    lastPickMode: "cam",// 参考書ショートカットの撮り方（cam=無音カメラ / file=写真から選ぶ）
     imgQuality: "std",  // 写真の画質プリセット（IMG_PRESETS のキー）
     trimDays: 0,        // 定着ずみの写真を自動で消すまでの日数。0＝しない
     storageHiddenUntil: null,
@@ -1775,8 +1745,7 @@ function startShortcut(id){
   state.draft.cause = null;
   go("add");
   crop.target = "q";
-  if (state.prefs.lastPickMode === "file") $("#file-input").click();
-  else openCamera();          // 既定は無音カメラ（音も鳴らず、音楽も止まらない）
+  openCamera();               // 無音カメラへ直行（音も鳴らず、音楽も止まらない）
 }
 
 /* ---------- 参考書の登録・編集 ---------- */
@@ -2053,24 +2022,21 @@ function paintShot(which, blob){
    の2つが起きる。silent-camera はどちらも起きない。
    撮ったあとの流れ（切り抜き → 保存）は写真から選んだときと同じ。
    ========================================================= */
-function openPicker(which){
-  crop.target = which;
-  $("#pick-title").textContent = which === "q" ? "問題の写真を追加" : "解答・解説の写真を追加";
-  $("#modal-pick").classList.add("open");
-}
-
-async function openCamera(){
+/* 写真の入り口はここ1つだけ。撮り方を選ばせず、いつでも無音カメラが開く。 */
+function openCamera(which){
+  if (which) crop.target = which;
   const cam = $("#cam");
   if (!cam || !customElements.get("silent-camera")){
-    toast("カメラを読み込めませんでした。写真から選んでください");
+    // コンポーネントが読み込めなかったときだけ、写真から選ぶ道に逃がす
+    toast("カメラを読み込めませんでした");
     $("#file-input").click();
     return;
   }
   $("#cam-title").textContent = crop.target === "q" ? "問題を撮る" : "解答・解説を撮る";
+  $("#cam-fallback").style.display = "none";
   $("#modal-cam").classList.add("open");
-  try {
-    await cam.start();          // audio を一切要求しないので、音楽は流れたまま
-  } catch { /* エラー内容はコンポーネント側が画面に出す */ }
+  // await をはさむとタップの流れが切れて Safari がカメラを開かないので、投げっぱなしにする
+  cam.start().catch(() => {});
 }
 
 function bindCamera(){
@@ -2086,9 +2052,10 @@ function bindCamera(){
       toast("無音で撮れました");
     }
   });
-  cam.addEventListener("error", e => {
-    $("#modal-cam").classList.remove("open");
-    toast(e.detail.title);
+  // カメラがどうしても使えないときだけ、写真から選ぶボタンを出す
+  cam.addEventListener("error", () => {
+    const fb = $("#cam-fallback");
+    if (fb) fb.style.display = "";
   });
 }
 
@@ -2690,17 +2657,12 @@ function bindUI(){
   // 写真スロット → 「無音で撮る」か「写真から選ぶ」か
   ["q","a"].forEach(w => {
     const el = $("#shot-" + w);
-    el.onclick = e => { if (e.target.closest(".clear")) return; openPicker(w); };
-    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPicker(w); } };
+    el.onclick = e => { if (e.target.closest(".clear")) return; openCamera(w); };
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCamera(w); } };
   });
-  // 選んだ撮り方を覚えて、参考書ショートカットのときは確認をはさまず直行する
-  $("#pick-cam").onclick  = () => {
-    state.prefs.lastPickMode = "cam"; savePrefs();
-    $("#modal-pick").classList.remove("open"); openCamera();
-  };
-  $("#pick-file").onclick = () => {
-    state.prefs.lastPickMode = "file"; savePrefs();
-    $("#modal-pick").classList.remove("open"); $("#file-input").click();
+  $("#cam-fallback").onclick = () => {
+    $("#modal-cam").classList.remove("open");
+    $("#file-input").click();
   };
   $("#file-input").onchange = e => {
     const f = e.target.files && e.target.files[0];
