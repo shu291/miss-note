@@ -698,7 +698,7 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
 
     <div class="card">
       <b style="font-size:14px">写真の画質</b>
-      <p class="muted" style="margin:6px 0 0">写真1枚あたりの大きさが変わります。これから撮るぶんに効きます。</p>
+      <p class="muted" style="margin:6px 0 0">写真1枚あたりの大きさが変わります。これから撮るぶんに効きます（すでに撮ったぶんは下の「写真を軽くする」で縮められます）。</p>
       <div class="seg" id="seg-imgq" style="margin-top:10px">
         <button data-v="light" aria-pressed="false">軽量</button>
         <button data-v="std" aria-pressed="true">標準</button>
@@ -787,9 +787,9 @@ const INTERVALS = [1, 3, 7, 16, 35];       // 正解するたびに次の段へ
 /* 写真の画質プリセット。max は長辺のピクセル数、q は JPEG の画質。
    ノートの写真は「文字が読めれば十分」なので、既定でもかなり絞ってある。 */
 const IMG_PRESETS = {
-  light: { label:"軽量",   max:1000, q:0.68, approx:  80 * 1024, note:"1枚 約80KB／文字は読めます。1GBで約6,500問" },
-  std:   { label:"標準",   max:1400, q:0.80, approx: 200 * 1024, note:"1枚 約200KB／ふつうはこれ。1GBで約2,600問" },
-  high:  { label:"高画質", max:2000, q:0.90, approx: 680 * 1024, note:"1枚 約680KB／図が細かいとき。1GBで約770問" },
+  light: { label:"軽量",   max:1000, q:0.68, approx:  80 * 1024, note:"既定。1枚 約80KB／1GBで約6,500問。問題1問を切り抜くぶんには十分読めます" },
+  std:   { label:"標準",   max:1400, q:0.80, approx: 200 * 1024, note:"1枚 約200KB／1GBで約2,600問。ページ全体を撮ることが多いなら" },
+  high:  { label:"高画質", max:2000, q:0.90, approx: 680 * 1024, note:"1枚 約680KB／1GBで約770問。細かい図やグラフを撮るとき" },
 };
 const imgPreset = () => IMG_PRESETS[state.prefs.imgQuality] || IMG_PRESETS.std;
 
@@ -878,7 +878,7 @@ const state = {
     cap: 20, theme: "auto", lastExportAt: null, backupHiddenUntil: null, installHidden: false,
     books: [],          // [{id, name, subject, createdAt}] 参考書＝ミスの置き場所
     lastBook: null,     // 前回ここに登録した参考書（次回も最初から選んでおく）
-    imgQuality: "std",  // 写真の画質プリセット（IMG_PRESETS のキー）
+    imgQuality: "light",// 写真の画質プリセット（IMG_PRESETS のキー）。既定は軽量
     trimDays: 0,        // 定着ずみの写真を自動で消すまでの日数。0＝しない
     storageHiddenUntil: null,
     camHintSeen: false,
@@ -968,6 +968,13 @@ async function refURL(note){
     state.notes = (await DB.all("notes")) || [];
     const p = await DB.get("prefs", "settings");
     if (p && p.v) Object.assign(state.prefs, p.v);
+    // 既定を「標準」から「軽量」に変えたので、すでに使っている端末にも一度だけ反映する。
+    // 以降は設定で選んだ値をそのまま尊重する。
+    if (!state.prefs.imgQualityMigrated){
+      state.prefs.imgQuality = "light";
+      state.prefs.imgQualityMigrated = true;
+      savePrefs();
+    }
   } catch (e) {
     console.error(e);
     toast("保存領域を開けませんでした");
