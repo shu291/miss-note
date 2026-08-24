@@ -365,6 +365,17 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
 .sheet .handle{width:38px;height:4px;background:var(--line);border-radius:999px;margin:0 auto 12px}
 .sheet h3{margin:0 0 4px;font-size:17px}
 
+/* 無音カメラ */
+silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px;overflow:hidden;background:#000}
+.cam-note{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.cam-note b{color:var(--good-text,var(--ink));font-weight:700}
+.pick-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:14px;border-radius:14px;
+  border:1px solid var(--line);background:var(--surface);cursor:pointer;margin-top:10px}
+.pick-btn .em{font-size:22px;flex:0 0 auto}
+.pick-btn .t1{display:block;font-size:14.5px;font-weight:700;color:var(--ink)}
+.pick-btn .t2{display:block;font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.55}
+.pick-btn.rec{border-color:var(--accent);background:var(--accent-soft)}
+
 /* cropper */
 .crop-stage{position:relative;background:#111;border-radius:12px;overflow:hidden;touch-action:none;user-select:none;display:grid;place-items:center;max-height:56vh}
 .crop-stage img{display:block;max-width:100%;max-height:56vh;pointer-events:none}
@@ -692,8 +703,36 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
     </div>
 
     <div class="card">
+      <b style="font-size:14px">写真の画質</b>
+      <p class="muted" style="margin:6px 0 0">写真1枚あたりの大きさが変わります。これから撮るぶんに効きます。</p>
+      <div class="seg" id="seg-imgq" style="margin-top:10px">
+        <button data-v="light" aria-pressed="false">軽量</button>
+        <button data-v="std" aria-pressed="true">標準</button>
+        <button data-v="high" aria-pressed="false">高画質</button>
+      </div>
+      <p class="muted" style="margin:6px 0 0" id="imgq-note">—</p>
+    </div>
+
+    <div class="card">
       <b style="font-size:14px">保存領域</b>
       <div id="storage-box" style="margin-top:8px"><p class="muted" style="margin:0">確認中…</p></div>
+
+      <div class="hr" style="margin:14px 0"></div>
+      <b style="font-size:13.5px">容量を減らす</b>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn ghost" id="btn-shrink">写真を軽くする</button>
+        <button class="btn ghost" id="btn-tidy">使っていない写真を消す</button>
+      </div>
+      <p class="muted" style="margin:8px 0 0" id="shrink-note">「写真を軽くする」は、いま保存されている写真を今の画質設定まで縮めます。問題が読める範囲で小さくするので、記録は消えません。</p>
+
+      <div class="hr" style="margin:14px 0"></div>
+      <b style="font-size:13.5px">定着ずみの写真を自動でお掃除</b>
+      <p class="muted" style="margin:4px 0 0">5回連続で正解して「定着ずみ」になった問題の<b>写真だけ</b>を、一定期間たってから消します。メモ・記録・分析はそのまま残るので、復習には戻せます。</p>
+      <div class="seg" id="seg-trim" style="margin-top:10px">
+        <button data-v="0" aria-pressed="true">しない</button>
+        <button data-v="30" aria-pressed="false">30日後</button>
+        <button data-v="90" aria-pressed="false">90日後</button>
+      </div>
     </div>
 
     <div class="card">
@@ -722,8 +761,48 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
   </div>
 </div>
 
+<!-- 写真の追加方法をえらぶ -->
+<div class="modal" id="modal-pick" role="dialog" aria-modal="true" aria-label="写真の追加方法">
+  <div class="scrim" data-close></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 id="pick-title">問題の写真を追加</h3>
+    <p class="muted" style="margin:0 0 6px">どちらでも、このあと範囲を切り抜けます。</p>
+
+    <button class="pick-btn rec" type="button" id="pick-cam">
+      <span class="em">🔇</span>
+      <span><span class="t1">無音で撮る</span>
+      <span class="t2">シャッター音が鳴りません。聴いている音楽や動画も止まりません。</span></span>
+    </button>
+
+    <button class="pick-btn" type="button" id="pick-file">
+      <span class="em">🖼</span>
+      <span><span class="t1">写真から選ぶ</span>
+      <span class="t2">カメラロールにある写真を使います。</span></span>
+    </button>
+
+    <button class="btn ghost wide" data-close style="margin-top:14px">やめる</button>
+  </div>
+</div>
+
+<!-- 無音カメラ -->
+<div class="modal" id="modal-cam" role="dialog" aria-modal="true" aria-label="無音カメラ">
+  <div class="scrim" data-close></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="row-between" style="margin-bottom:10px">
+      <h3 id="cam-title" style="margin:0">問題を撮る</h3>
+      <span class="cam-note"><b>🔇 無音</b>・音楽は止まりません</span>
+    </div>
+    <silent-camera id="cam" no-gallery compact></silent-camera>
+    <p class="muted" style="margin:8px 0 0;text-align:center">丸いボタンで撮影 → そのまま切り抜きに進みます</p>
+    <button class="btn ghost wide" data-close style="margin-top:10px">とじる</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
+<script src="silent-camera.js"></script>
 <script>
 "use strict";
 /* =========================================================
@@ -733,6 +812,16 @@ details.tbl summary{cursor:pointer;font-size:12px;color:var(--muted);margin-top:
 
 /* ---------- 定数 ---------- */
 const INTERVALS = [1, 3, 7, 16, 35];       // 正解するたびに次の段へ
+
+/* 写真の画質プリセット。max は長辺のピクセル数、q は JPEG の画質。
+   ノートの写真は「文字が読めれば十分」なので、既定でもかなり絞ってある。 */
+const IMG_PRESETS = {
+  light: { label:"軽量",   max:1000, q:0.68, approx: 60 * 1024,  note:"1枚 約60KB／文字は読めます。たくさん撮る人向け" },
+  std:   { label:"標準",   max:1400, q:0.80, approx: 140 * 1024, note:"1枚 約140KB／ふつうはこれで足ります" },
+  high:  { label:"高画質", max:2000, q:0.90, approx: 400 * 1024, note:"1枚 約400KB／図やグラフが細かいとき" },
+};
+const imgPreset = () => IMG_PRESETS[state.prefs.imgQuality] || IMG_PRESETS.std;
+
 const SUBJECTS = ["数学","英語","物理","化学","生物","地学","情報","その他"];
 /* 「なぜ間違えた？」の初期値。設定から自分の言葉に変えられる（state.prefs.causes） */
 const DEFAULT_CAUSES = [
@@ -818,6 +907,11 @@ const state = {
     cap: 20, theme: "auto", lastExportAt: null, backupHiddenUntil: null, installHidden: false,
     books: [],          // [{id, name, subject, createdAt}] 参考書＝ミスの置き場所
     lastBook: null,     // 前回ここに登録した参考書（次回も最初から選んでおく）
+    lastPickMode: "cam",// 参考書ショートカットの撮り方（cam=無音カメラ / file=写真から選ぶ）
+    imgQuality: "std",  // 写真の画質プリセット（IMG_PRESETS のキー）
+    trimDays: 0,        // 定着ずみの写真を自動で消すまでの日数。0＝しない
+    storageHiddenUntil: null,
+    camHintSeen: false,
   },
   queue: [], qi: 0, retryPass: false,
   revealed: false,
@@ -919,6 +1013,19 @@ async function refURL(note){
     navigator.serviceWorker.register("sw.js").catch(()=>{});
   }
   requestPersist();   // 自動削除の対象から外しておく（拒否されても実害なし）
+
+  // 起動のじゃまをしないよう、容量まわりは描画のあとで静かに走らせる
+  setTimeout(async () => {
+    try {
+      const t = await autoTrimPhotos();
+      if (t.n > 0){
+        toast(`定着ずみの写真 ${t.n}枚 を整理しました（${fmtBytes(t.bytes)}）`);
+        if (state.view === "review") render();
+      }
+      storageWarn = await storagePressure();
+      if (storageWarn && state.view === "review") renderReview();
+    } catch (e){ console.error(e); }
+  }, 1200);
 })();
 
 function savePrefs(){ DB.put("prefs", { k:"settings", v: state.prefs }); }
@@ -1029,6 +1136,189 @@ async function storageInfo(){
   return { usage, quota, persisted, photos };
 }
 
+/* =========================================================
+   写真の容量対策
+
+   ミスノートは1問につき最大2枚。100問で200枚になる。
+   放っておくと端末の保存領域を圧迫するので、次の4段で対処する。
+     ① 撮るとき   … 画質プリセットで最初から小さく保存する
+     ② あふれたとき … QuotaExceededError を捕まえて自動で軽くして再保存
+     ③ あとから    … 「写真を軽くする」で保存ずみの写真をまとめて縮める
+     ④ ほっといても … 定着ずみの写真を自動でお掃除（記録は残す）
+   どれも「記録（いつ間違えた・何回で覚えた）」は絶対に消さない。
+   ========================================================= */
+
+const isQuotaError = e =>
+  !!e && (e.name === "QuotaExceededError" || e.name === "NS_ERROR_DOM_QUOTA_REACHED" || e.code === 22);
+
+/* ② 保存があふれたら、その場で写真を軽くして入れ直す。
+   ユーザーに「容量がいっぱいです」と突き返す前に、まず自動で助ける。 */
+async function putImageSafely(id, blob){
+  try {
+    await DB.put("images", { id, blob });
+    return blob;
+  } catch (e){
+    if (!isQuotaError(e)) throw e;
+
+    // 1回目：軽量プリセットまで落としてみる
+    for (const [max, q] of [[1000, 0.65], [800, 0.55]]){
+      try {
+        const bmp = await createImageBitmap(blob);
+        const small = await encodeJPEG(bmp, 0, 0, bmp.width, bmp.height, max, q);
+        bmp.close?.();
+        if (!small) continue;
+        await DB.put("images", { id, blob: small });
+        toast("空きが少ないので写真を軽くして保存しました");
+        return small;
+      } catch (e2){
+        if (!isQuotaError(e2)) throw e2;
+      }
+    }
+    // それでも入らないなら、古い写真の掃除を促す
+    throw e;
+  }
+}
+
+/* 写真の実サイズを数える。1000枚あっても一瞬で終わる程度の処理。 */
+async function photoStats(){
+  try {
+    const all = await DB.all("images");
+    let bytes = 0;
+    for (const r of all) bytes += (r.blob && r.blob.size) || 0;
+    return { count: all.length, bytes, avg: all.length ? bytes / all.length : 0 };
+  } catch { return { count: 0, bytes: 0, avg: 0 }; }
+}
+
+/* いま使われている画像IDの集合（迷子画像の判定用） */
+function usedImageIds(){
+  const s = new Set();
+  for (const n of state.notes){ if (n.qImg) s.add(n.qImg); if (n.aImg) s.add(n.aImg); }
+  return s;
+}
+
+/* ③ 保存ずみの写真をまとめて縮める。
+   すでに十分小さいものは触らない（JPEGは再圧縮のたびに画質が落ちるため）。 */
+async function shrinkAllPhotos(onProgress){
+  const p = imgPreset();
+  const all = await DB.all("images");
+  let before = 0, after = 0, changed = 0, i = 0;
+
+  for (const rec of all){
+    i++;
+    onProgress?.(i, all.length);
+    const blob = rec.blob;
+    if (!blob) continue;
+    before += blob.size;
+
+    let bmp = null;
+    try {
+      bmp = await createImageBitmap(blob);
+      const long = Math.max(bmp.width, bmp.height);
+      // すでに目標サイズ以下で、容量も十分小さいなら触らない
+      if (long <= p.max && blob.size <= p.approx * 1.25){ after += blob.size; continue; }
+
+      const out = await encodeJPEG(bmp, 0, 0, bmp.width, bmp.height, p.max, p.q);
+      // 1割も減らないなら、画質を落とすだけ損なので元のまま残す
+      if (out && out.size < blob.size * 0.9){
+        await DB.put("images", { id: rec.id, blob: out });
+        const u = urlCache.get(rec.id);
+        if (u){ URL.revokeObjectURL(u); urlCache.delete(rec.id); }
+        after += out.size; changed++;
+      } else {
+        after += blob.size;
+      }
+    } catch {
+      after += blob.size;
+    } finally {
+      bmp?.close?.();
+    }
+    if (i % 12 === 0) await new Promise(r => setTimeout(r, 0));   // 画面を固まらせない
+  }
+  return { total: all.length, changed, before, after, saved: Math.max(0, before - after) };
+}
+
+/* 迷子画像（どのミスからも参照されていない写真）を消す。
+   保存の途中で失敗したときなどに残ることがある。 */
+async function tidyOrphans(){
+  const used = usedImageIds();
+  const all = await DB.all("images");
+  let n = 0, bytes = 0;
+  for (const rec of all){
+    if (used.has(rec.id)) continue;
+    bytes += (rec.blob && rec.blob.size) || 0;
+    await DB.del("images", rec.id);
+    const u = urlCache.get(rec.id);
+    if (u){ URL.revokeObjectURL(u); urlCache.delete(rec.id); }
+    n++;
+  }
+  return { n, bytes };
+}
+
+/* ④ 定着ずみになってから一定期間たった問題の「写真だけ」を消す。
+   もう一度出題したくなったら記録は残っているので復習には戻せる。 */
+async function autoTrimPhotos(){
+  const days = state.prefs.trimDays | 0;
+  if (!days) return { n: 0, bytes: 0 };
+  const cutoff = Date.now() - days * DAY;
+  let n = 0, bytes = 0;
+
+  for (const note of state.notes){
+    if (!note.mastered || note.photoTrimmed) continue;
+    if (!note.qImg && !note.aImg) continue;
+    // 定着した日時。古いデータには masteredAt が無いので履歴の最後で代用する。
+    const at = note.masteredAt
+      || (note.history && note.history.length ? note.history[note.history.length - 1].at : null)
+      || note.createdAt;
+    if (at > cutoff) continue;
+
+    for (const k of ["qImg", "aImg"]){
+      const id = note[k];
+      if (!id) continue;
+      try {
+        const rec = await DB.get("images", id);
+        bytes += (rec && rec.blob && rec.blob.size) || 0;
+        await DB.del("images", id);
+      } catch {}
+      const u = urlCache.get(id);
+      if (u){ URL.revokeObjectURL(u); urlCache.delete(id); }
+      note[k] = null;
+      n++;
+    }
+    note.photoTrimmed = true;
+    await DB.put("notes", note);
+  }
+  return { n, bytes };
+}
+
+/* 保存領域が心細くなったら知らせる（残り15%を切る、または残り50MB未満） */
+async function storagePressure(){
+  try {
+    if (!navigator.storage?.estimate) return null;
+    const { usage, quota } = await navigator.storage.estimate();
+    if (usage == null || !quota) return null;
+    const free = quota - usage;
+    const ratio = usage / quota;
+    if (ratio < 0.85 && free > 50 * 1024 * 1024) return null;
+    return { usage, quota, free, ratio };
+  } catch { return null; }
+}
+
+let storageWarn = null;
+function storageBanner(){
+  if (!storageWarn) return "";
+  if (state.prefs.storageHiddenUntil && Date.now() < state.prefs.storageHiddenUntil) return "";
+  return `
+    <div class="nudge">
+      <div class="nudge-txt"><b>保存領域が少なくなっています</b><br>
+        写真であと ${fmtBytes(storageWarn.free)} ぶんしか入りません。
+        写真をまとめて軽くすると、記録はそのままで空きを増やせます。</div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn ghost" id="stg-later">あとで</button>
+        <button class="btn primary" id="stg-fix">写真を軽くする</button>
+      </div>
+    </div>`;
+}
+
 /* バックアップの催促：20問以上ためていて、30日以上書き出していないとき */
 function shouldNudgeBackup(){
   if (state.notes.length < 20) return false;
@@ -1053,6 +1343,19 @@ function backupBanner(){
     </div>`;
 }
 function bindBanner(){
+  const sl = $("#stg-later"), sf = $("#stg-fix");
+  if (sl) sl.onclick = () => {
+    state.prefs.storageHiddenUntil = Date.now() + 3 * DAY;
+    savePrefs(); renderReview();
+  };
+  if (sf) sf.onclick = async () => {
+    sf.disabled = true; sf.textContent = "処理中…";
+    const r = await shrinkAllPhotos((i, n) => { sf.textContent = `${i}/${n}`; });
+    storageWarn = await storagePressure();
+    toast(r.saved > 0 ? `${fmtBytes(r.saved)} 空きました` : "これ以上は減らせませんでした");
+    renderReview();
+  };
+
   const now = $("#nudge-now"), later = $("#nudge-later");
   if (now) now.onclick = exportAll;
   if (later) later.onclick = () => {
@@ -1146,7 +1449,7 @@ async function answer(note, ok){
   note.history.push({ at: Date.now(), ok });
   if (ok) {
     note.step += 1;
-    if (note.step >= INTERVALS.length) { note.mastered = true; note.dueAt = null; }
+    if (note.step >= INTERVALS.length) { note.mastered = true; note.masteredAt = Date.now(); note.dueAt = null; }
     else note.dueAt = nextDue(note);
   } else {
     note.mastered = false;
@@ -1228,6 +1531,7 @@ async function renderReview(){
         </div>
       </div>
       ${installCard()}
+      ${storageBanner()}
       ${backupBanner()}`;
     bindBanner();
     bindShortcuts(box);
@@ -1463,13 +1767,16 @@ function bindShortcuts(root){
   $$(".sc-btn[data-new]", root).forEach(b => b.onclick = () => openBookModal(null));
 }
 /* 参考書と教科を決めた状態で追加画面に入り、そのまま写真選択を開く。
-   ここまで同期処理でつなぐこと（await をはさむと Safari がカメラを開かない）。 */
+   ここまで同期処理でつなぐこと（await をはさむと Safari がカメラを開かない）。
+   getUserMedia も file input も「タップと同じ処理の流れ」から呼ぶ必要があるので、
+   openCamera() は await せずに投げっぱなしにする。 */
 function startShortcut(id){
   selectBook(id);
   state.draft.cause = null;
   go("add");
   crop.target = "q";
-  $("#file-input").click();
+  if (state.prefs.lastPickMode === "file") $("#file-input").click();
+  else openCamera();          // 既定は無音カメラ（音も鳴らず、音楽も止まらない）
 }
 
 /* ---------- 参考書の登録・編集 ---------- */
@@ -1667,17 +1974,21 @@ async function saveNote(){
       mastered: false,
       history: [],
     };
-    if (state.draft.qImg){
+    const saved = [];
+    for (const k of ["q", "a"]){
+      const blob = state.draft[k + "Img"];
+      if (!blob) continue;
       const id = uid();
-      await DB.put("images", { id, blob: state.draft.qImg });
-      note.qImg = id;
+      await putImageSafely(id, blob);
+      note[k + "Img"] = id;
+      saved.push(id);
     }
-    if (state.draft.aImg){
-      const id = uid();
-      await DB.put("images", { id, blob: state.draft.aImg });
-      note.aImg = id;
+    try {
+      await DB.put("notes", note);
+    } catch (e){
+      for (const id of saved) await DB.del("images", id).catch(()=>{});   // 迷子画像を残さない
+      throw e;
     }
-    await DB.put("notes", note);
     state.notes.push(note);
     // 次に同じ本を開いたとき「つづき」を出せるように覚えておく
     if (book && pageNo != null){ book.lastPageNo = pageNo; book.lastQNo = qNo; savePrefs(); }
@@ -1693,7 +2004,10 @@ async function saveNote(){
     }
   } catch (e){
     console.error(e);
-    toast("保存に失敗しました");
+    toast(isQuotaError(e)
+      ? "保存領域がいっぱいです。設定の「写真を軽くする」をお試しください"
+      : "保存に失敗しました");
+    if (isQuotaError(e)) { storageWarn = await storagePressure(); }
   } finally {
     btn.disabled = false;
   }
@@ -1727,6 +2041,55 @@ function paintShot(which, blob){
     state.draft[which + "Img"] = null;
     paintShot(which, null);
   };
+}
+
+/* =========================================================
+   写真を撮る（無音カメラ）
+
+   標準の <input type="file" accept="image/*"> から撮ると、
+   iPad は「システムのカメラ」を開くので
+     ・シャッター音が鳴る
+     ・再生中の音楽／動画が止まる
+   の2つが起きる。silent-camera はどちらも起きない。
+   撮ったあとの流れ（切り抜き → 保存）は写真から選んだときと同じ。
+   ========================================================= */
+function openPicker(which){
+  crop.target = which;
+  $("#pick-title").textContent = which === "q" ? "問題の写真を追加" : "解答・解説の写真を追加";
+  $("#modal-pick").classList.add("open");
+}
+
+async function openCamera(){
+  const cam = $("#cam");
+  if (!cam || !customElements.get("silent-camera")){
+    toast("カメラを読み込めませんでした。写真から選んでください");
+    $("#file-input").click();
+    return;
+  }
+  $("#cam-title").textContent = crop.target === "q" ? "問題を撮る" : "解答・解説を撮る";
+  $("#modal-cam").classList.add("open");
+  try {
+    await cam.start();          // audio を一切要求しないので、音楽は流れたまま
+  } catch { /* エラー内容はコンポーネント側が画面に出す */ }
+}
+
+function bindCamera(){
+  const cam = $("#cam");
+  if (!cam) return;
+  cam.addEventListener("capture", e => {
+    const blob = e.detail.blob;
+    cam.stop();                                   // カメラをすぐ手放す（発熱・電池対策）
+    $("#modal-cam").classList.remove("open");
+    openCropper(blob, crop.target);
+    if (!state.prefs.camHintSeen){
+      state.prefs.camHintSeen = true; savePrefs();
+      toast("無音で撮れました");
+    }
+  });
+  cam.addEventListener("error", e => {
+    $("#modal-cam").classList.remove("open");
+    toast(e.detail.title);
+  });
 }
 
 /* =========================================================
@@ -1833,16 +2196,24 @@ async function produceImage(){
     sh = Math.round(crop.sel.h * (rh / crop.sel.dh));
     sw = Math.min(sw, rw - sx); sh = Math.min(sh, rh - sy);
   }
-  // 3) 長辺1400pxに縮小してJPEG化
-  const MAX = 1400;
-  const scale = Math.min(1, MAX / Math.max(sw, sh));
-  const c2 = document.createElement("canvas");
-  c2.width = Math.max(1, Math.round(sw * scale));
-  c2.height = Math.max(1, Math.round(sh * scale));
-  const x2 = c2.getContext("2d");
-  x2.fillStyle = "#fff"; x2.fillRect(0, 0, c2.width, c2.height);
-  x2.drawImage(c1, sx, sy, sw, sh, 0, 0, c2.width, c2.height);
-  return await new Promise(r => c2.toBlob(r, "image/jpeg", 0.82));
+  // 3) 設定の画質まで縮小してJPEG化
+  const p = imgPreset();
+  const blob = await encodeJPEG(c1, sx, sy, sw, sh, p.max, p.q);
+  src.close?.();
+  return blob;
+}
+
+/* 切り出し＋縮小＋JPEG化。容量対策の処理からも使い回す。 */
+async function encodeJPEG(source, sx, sy, sw, sh, maxEdge, q){
+  const scale = Math.min(1, maxEdge / Math.max(sw, sh));
+  const c = document.createElement("canvas");
+  c.width  = Math.max(1, Math.round(sw * scale));
+  c.height = Math.max(1, Math.round(sh * scale));
+  const x = c.getContext("2d");
+  x.imageSmoothingQuality = "high";
+  x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height);   // 透過PNG対策
+  x.drawImage(source, sx, sy, sw, sh, 0, 0, c.width, c.height);
+  return await new Promise(r => c.toBlob(r, "image/jpeg", q));
 }
 
 /* =========================================================
@@ -1982,12 +2353,14 @@ async function openDetail(id){
     ${qUrl ? `<div class="q-wrap" style="margin-bottom:10px"><img src="${qUrl}" alt="問題"></div>` : ""}
     ${n.memo ? `<div class="card" style="white-space:pre-wrap;font-size:14px">${esc(n.memo)}</div>` : ""}
     ${aUrl ? `<div class="q-wrap" style="margin-top:10px"><img src="${aUrl}" alt="解答"></div>` : ""}
+    ${n.photoTrimmed ? `<p class="muted" style="margin:10px 0 0">📦 定着ずみのため、写真は容量節約のために整理ずみです（記録は残っています）。</p>` : ""}
     ${hist ? `<div class="hist">${hist}</div>` : ""}
     ${n.ref ? `<a class="btn ghost wide" style="margin-top:12px" href="${TEXTBOOK_URL}#miss=${encodeURIComponent(n.id)}">📖 じぶん教科書で開く</a>` : ""}
     <div class="btn-row" style="margin-top:16px">
       <button class="btn" id="d-now">今すぐ復習に入れる</button>
       <button class="btn ghost" id="d-reset">最初からやり直す</button>
     </div>
+    ${(n.qImg || n.aImg) ? `<button class="btn ghost wide" id="d-nophoto" style="margin-top:10px">写真だけ削除して容量をあける</button>` : ""}
     <button class="btn danger wide" id="d-del" style="margin-top:10px">この問題を削除</button>
     <button class="btn wide ghost" data-close style="margin-top:10px">閉じる</button>`;
 
@@ -2003,6 +2376,23 @@ async function openDetail(id){
     await DB.put("notes", n);
     closeModals(); render(); toast("ステップを戻しました");
   };
+  const noPhoto = $("#d-nophoto");
+  if (noPhoto) noPhoto.onclick = async () => {
+    if (!confirm("この問題の写真だけを削除します。\nメモ・記録・復習の予定は残ります。よろしいですか？")) return;
+    let bytes = 0;
+    for (const k of ["qImg", "aImg"]){
+      const iid = n[k]; if (!iid) continue;
+      try { const rec = await DB.get("images", iid); bytes += (rec?.blob?.size) || 0; await DB.del("images", iid); } catch {}
+      const u = urlCache.get(iid);
+      if (u){ URL.revokeObjectURL(u); urlCache.delete(iid); }
+      n[k] = null;
+    }
+    n.photoTrimmed = true;
+    await DB.put("notes", n);
+    closeModals(); render();
+    toast(`写真を削除しました（${fmtBytes(bytes)}）`);
+  };
+
   $("#d-del").onclick = async () => {
     if (!confirm("この問題を削除します。よろしいですか？")) return;
     if (n.qImg) await DB.del("images", n.qImg);
@@ -2234,18 +2624,31 @@ async function renderStorage(){
     ? `前回のバックアップ：${fmtDate(last)}（${Math.floor((Date.now() - last) / DAY)}日前）`
     : "まだ一度もバックアップしていません";
 
+  // 画質プリセット
+  const p = imgPreset();
+  $$("#seg-imgq button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.prefs.imgQuality)));
+  $("#imgq-note").textContent = p.note;
+  // 自動お掃除
+  $$("#seg-trim button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === (state.prefs.trimDays | 0))));
+
   const box = $("#storage-box");
   const s = await storageInfo();
+  const ph = await photoStats();
   const pct = (s.usage != null && s.quota) ? Math.min(100, s.usage / s.quota * 100) : 0;
   const free = (s.usage != null && s.quota != null) ? s.quota - s.usage : null;
+  // あと何問ぶん入るか（1問=写真2枚の想定）。数字にすると不安が減る。
+  const roomNotes = (free != null && p.approx) ? Math.floor(free / (p.approx * 2)) : null;
 
   box.innerHTML = `
     <div class="bar-row" style="padding-top:0">
-      <span class="lb">写真 ${s.photos}枚</span>
+      <span class="lb">写真 ${ph.count}枚</span>
       <span class="vl">${fmtBytes(s.usage)} 使用</span>
       <span class="track"><span class="fill" style="width:${Math.max(1.2, pct)}%"></span></span>
     </div>
-    <p class="muted" style="margin:4px 0 0">${free != null ? `このアプリはあと ${fmtBytes(free)} まで使えます` : "使用量を取得できませんでした"}</p>
+    <p class="muted" style="margin:4px 0 0">
+      写真そのものは ${fmtBytes(ph.bytes)}${ph.count ? `（1枚あたり平均 ${fmtBytes(ph.avg)}）` : ""}。
+      ${free != null ? `あと ${fmtBytes(free)}${roomNotes != null ? ` ＝ おおよそ ${roomNotes.toLocaleString()}問ぶん` : ""} 入ります。` : "使用量を取得できませんでした。"}
+    </p>
     <div class="hr" style="margin:12px 0"></div>
     <div class="row-between">
       <span style="font-size:13px">${s.persisted ? "勝手に消えない設定：<b>ON</b>" : "勝手に消えない設定：OFF"}</span>
@@ -2266,7 +2669,11 @@ async function renderStorage(){
 /* =========================================================
    UI 配線
    ========================================================= */
-function closeModals(){ $$(".modal").forEach(m => m.classList.remove("open")); }
+function closeModals(){
+  $$(".modal").forEach(m => m.classList.remove("open"));
+  const cam = $("#cam");
+  if (cam && cam.stop) cam.stop();   // 画面を閉じたらカメラを必ず手放す
+}
 
 function openSettings(){
   $("#in-cap").value = state.prefs.cap;
@@ -2280,18 +2687,27 @@ function openSettings(){
 function bindUI(){
   $$("nav.tabs .t").forEach(b => b.onclick = () => go(b.dataset.view));
 
-  // 写真スロット
-  const pick = which => { crop.target = which; $("#file-input").click(); };
+  // 写真スロット → 「無音で撮る」か「写真から選ぶ」か
   ["q","a"].forEach(w => {
     const el = $("#shot-" + w);
-    el.onclick = e => { if (e.target.closest(".clear")) return; pick(w); };
-    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(w); } };
+    el.onclick = e => { if (e.target.closest(".clear")) return; openPicker(w); };
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPicker(w); } };
   });
+  // 選んだ撮り方を覚えて、参考書ショートカットのときは確認をはさまず直行する
+  $("#pick-cam").onclick  = () => {
+    state.prefs.lastPickMode = "cam"; savePrefs();
+    $("#modal-pick").classList.remove("open"); openCamera();
+  };
+  $("#pick-file").onclick = () => {
+    state.prefs.lastPickMode = "file"; savePrefs();
+    $("#modal-pick").classList.remove("open"); $("#file-input").click();
+  };
   $("#file-input").onchange = e => {
     const f = e.target.files && e.target.files[0];
     if (f) openCropper(f, crop.target);
   };
   bindCropper();
+  bindCamera();
 
   $("#btn-save").onclick = saveNote;
 
@@ -2376,6 +2792,57 @@ function bindUI(){
   $("#seg-theme").onclick = e => {
     const b = e.target.closest("button"); if (!b) return;
     state.prefs.theme = b.dataset.v; applyTheme(); savePrefs();
+  };
+
+  // 写真の画質
+  $("#seg-imgq").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.prefs.imgQuality = b.dataset.v;
+    savePrefs(); renderStorage();
+  };
+
+  // 定着ずみの自動お掃除
+  $("#seg-trim").onclick = async e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const d = +b.dataset.v;
+    if (d && !confirm(`定着ずみになって${d}日たった問題の「写真」を自動で消します。\n記録・メモ・分析は残ります。よろしいですか？`)) return;
+    state.prefs.trimDays = d;
+    savePrefs(); renderStorage();
+    if (d){
+      const r = await autoTrimPhotos();
+      toast(r.n ? `写真 ${r.n}枚 を整理しました（${fmtBytes(r.bytes)}）` : "いま消せる写真はありませんでした");
+      renderStorage(); render();
+    }
+  };
+
+  // 写真をまとめて軽くする
+  $("#btn-shrink").onclick = async () => {
+    const btn = $("#btn-shrink"), label = btn.textContent;
+    const ph = await photoStats();
+    if (!ph.count){ toast("写真がまだありません"); return; }
+    if (!confirm(`保存ずみの写真 ${ph.count}枚（${fmtBytes(ph.bytes)}）を「${imgPreset().label}」まで縮めます。\n元の画質には戻せません。よろしいですか？`)) return;
+    btn.disabled = true;
+    const r = await shrinkAllPhotos((i, n) => { btn.textContent = `${i}/${n}…`; });
+    btn.disabled = false; btn.textContent = label;
+    $("#shrink-note").textContent = r.saved > 0
+      ? `${r.changed}枚を縮めて ${fmtBytes(r.saved)} 空きました（${fmtBytes(r.before)} → ${fmtBytes(r.after)}）。`
+      : "すでに十分小さいので、変更しませんでした。";
+    toast(r.saved > 0 ? `${fmtBytes(r.saved)} 空きました` : "これ以上は減らせませんでした");
+    storageWarn = await storagePressure();
+    renderStorage(); render();
+  };
+
+  // 迷子写真の掃除
+  $("#btn-tidy").onclick = async () => {
+    const btn = $("#btn-tidy"); btn.disabled = true;
+    const r = await tidyOrphans();
+    btn.disabled = false;
+    $("#shrink-note").textContent = r.n
+      ? `どのミスからも使われていない写真 ${r.n}枚（${fmtBytes(r.bytes)}）を消しました。`
+      : "使っていない写真はありませんでした。きれいな状態です。";
+    toast(r.n ? `${r.n}枚 消しました` : "掃除するものはありませんでした");
+    storageWarn = await storagePressure();
+    renderStorage();
   };
   $("#btn-export").onclick = exportAll;
   $("#btn-import").onclick = () => $("#import-input").click();
