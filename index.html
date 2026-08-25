@@ -475,12 +475,12 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
 
   <main>
     <!-- ============ 復習 ============ -->
-    <section class="view active" id="view-review" aria-label="今日の復習">
+    <section class="view" id="view-review" aria-label="今日の復習">
       <div id="review-body"></div>
     </section>
 
-    <!-- ============ 追加 ============ -->
-    <section class="view" id="view-add" aria-label="ミスを追加">
+    <!-- ============ 追加（起動時にここを開く） ============ -->
+    <section class="view active" id="view-add" aria-label="ミスを追加">
       <h2 class="title">ミスを追加</h2>
       <p class="sub">写真を撮るだけでOK。復習日は自動で決まります。</p>
 
@@ -585,8 +585,8 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
   </main>
 
   <nav class="tabs" aria-label="メインナビゲーション">
-    <button class="t" data-view="review" aria-current="page"><span class="ico">🔁</span>復習<span class="badge" id="badge-due" hidden>0</span></button>
-    <button class="t" data-view="add"><span class="ico">＋</span>追加</button>
+    <button class="t" data-view="review"><span class="ico">🔁</span>復習<span class="badge" id="badge-due" hidden>0</span></button>
+    <button class="t" data-view="add" aria-current="page"><span class="ico">＋</span>追加</button>
     <button class="t" data-view="list"><span class="ico">▦</span>一覧</button>
     <button class="t" data-view="stats"><span class="ico">📊</span>分析</button>
   </nav>
@@ -884,7 +884,7 @@ const DB = (() => {
 
 /* ---------- 状態 ---------- */
 const state = {
-  view: "review",
+  view: "add",                // 起動時の画面。撮ってすぐ登録できるよう「追加」から始める
   notes: [],                  // 画像は blob 別管理
   prefs: {
     cap: 20, theme: "auto", lastExportAt: null, backupHiddenUntil: null, installHidden: false,
