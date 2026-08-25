@@ -724,6 +724,16 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
     </div>
 
     <div class="card">
+      <b style="font-size:14px">カメラの持ちかた</b>
+      <p class="muted" style="margin:6px 0 0">撮ったあと、カメラをすぐ手放すかどうか。<b>音楽が止まる</b>／<b>許可を毎回聞かれる</b>のどちらが気になるかで選んでください。</p>
+      <div class="seg" id="seg-camhold" style="margin-top:10px">
+        <button data-v="release" aria-pressed="true">すぐ手放す</button>
+        <button data-v="keep" aria-pressed="false">持っておく</button>
+      </div>
+      <p class="muted" style="margin:6px 0 0" id="camhold-note">—</p>
+    </div>
+
+    <div class="card">
       <b style="font-size:14px">保存領域</b>
       <div id="storage-box" style="margin-top:8px"><p class="muted" style="margin:0">確認中…</p></div>
 
@@ -783,7 +793,7 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
     <silent-camera id="cam" no-gallery compact></silent-camera>
     <p class="muted" style="margin:8px 0 0;text-align:center">丸いボタンで撮影 → そのまま切り抜きに進みます</p>
     <p style="margin:8px 0 0;text-align:center">
-      <button class="linkbtn" id="cam-help-toggle">毎回カメラの許可を聞かれるときは</button>
+      <button class="linkbtn" id="cam-help-toggle">許可を毎回聞かれる・音楽が止まるときは</button>
     </p>
     <div class="cam-help" id="cam-help" hidden></div>
     <button class="btn wide" id="cam-fallback" style="margin-top:10px;display:none">カメラが使えないので写真から選ぶ</button>
@@ -903,6 +913,7 @@ const state = {
     trimDays: 0,        // 定着ずみの写真を自動で消すまでの日数。0＝しない
     storageHiddenUntil: null,
     camHintSeen: false,
+    camHold: "release",  // 撮ったあとカメラをすぐ手放す。"keep" なら少しのあいだ持っておく
   },
   queue: [], qi: 0, retryPass: false,
   revealed: false,
@@ -2052,18 +2063,25 @@ function paintShot(which, blob){
    の2つが起きる。silent-camera はどちらも起きない。
    撮ったあとの流れ（切り抜き → 保存）は写真から選んだときと同じ。
    ========================================================= */
-/* ---------- カメラを温めておく ----------
-   iOS はカメラの許可を「そのページを開いているあいだ」しか覚えない。
-   撮るたびに手放して取り直すと、そのたびに許可を聞かれることがある。
-   そこで 1問ぶん（撮る → 切り抜く → 解答も撮る → 保存）のあいだは
-   カメラを生かしたまま持っておき、しばらく使わなければ自分から手放す。
-   ・裏に回った（他アプリ・画面消灯）→ silent-camera 側が即座に手放す
-   ・KEEP_WARM_MS のあいだ開かれなければ手放す（発熱・電池・録画中ランプ対策） */
+/* ---------- 撮ったあと、カメラをどう持つか ----------
+   立っている問題が2つあり、向きが逆なので設定で選べるようにしてある。
+
+   (1) 音楽が止まる … iPad の Chrome などは、カメラを起こすときに
+       端末の「音の権利」を取りにいく作りで、他のアプリの再生が止まる。
+       止まった音は、カメラを手放したあとに戻ってくることが多い。
+       → 撮ったら "すぐ手放す"（既定）
+   (2) 許可を毎回聞かれる … iOS はカメラの許可をページを開いているあいだしか
+       覚えない。取り直すたびに聞かれることがある。
+       → 1問ぶん（撮る→切り抜く→解答も撮る）のあいだ "持っておく"
+
+   どちらでも、裏に回った瞬間と画面を離れるときは必ず手放す。 */
 const KEEP_WARM_MS = 100 * 1000;
 let camWarmTimer = null;
 
+/* 撮影後・モーダルを閉じたあとの後始末。設定に従って手放す時期を決める */
 function camKeepWarm(){
   clearTimeout(camWarmTimer);
+  if (state.prefs.camHold !== "keep"){ camRelease(); return; }
   camWarmTimer = setTimeout(() => {
     const cam = $("#cam");
     if (cam && cam.stop && !$("#modal-cam").classList.contains("open")) cam.stop();
@@ -2145,16 +2163,22 @@ function camHelpHTML(){
       <li><b>カメラ</b> を <b>「許可」</b> にする</li>
     </ol>
     <p class="why">これで次からは聞かれません。ついでに
-      <b>共有ボタン →「ホーム画面に追加」</b>をしておくと、写真の消えにくさも上がります。</p>`;
+      <b>共有ボタン →「ホーム画面に追加」</b>をしておくと、写真の消えにくさも上がります。</p>
+    <p class="why">音楽が止まってしまうときは、⚙設定 →「カメラの持ちかた」を
+      <b>「すぐ手放す」</b>にすると戻りやすくなります。</p>`;
   if (camEnv() === "ios-other") return `
-    <b>いま使っているブラウザでは覚えられません</b>
-    <p style="margin:6px 0 0">iPad の Chrome・Edge などは中身が Safari で、
-      サイトごとの「許可」を残せません。<b>Safari で開く</b>と一度で済みます。</p>
+    <b>Safari に移すと、どちらも直ります</b>
+    <p style="margin:6px 0 0">iPad の Chrome・Edge などは中身が Safari（WebKit）です。
+      そのため <b>サイトごとの「許可」を残せません</b>。また、カメラを起こすときに
+      端末の音の権利をつかむ作りのため、<b>再生中の音楽が止まります</b>。
+      どちらもアプリ側からは直せません。</p>
     <ol>
       <li>Safari で <b>shu291.github.io/miss-note/</b> を開く</li>
       <li>アドレスバー左の <b>「ぁあ」</b> → <b>Webサイトの設定</b> → <b>カメラ</b> →「許可」</li>
       <li><b>共有ボタン →「ホーム画面に追加」</b>でアプリとして使う</li>
     </ol>
+    <p class="why">このまま使う場合は、⚙設定 →「カメラの持ちかた」を
+      <b>「すぐ手放す」</b>（既定）にしておくと、止まった音楽が戻りやすくなります。</p>
     <p class="why">記録は端末ごと・ブラウザごとに分かれています。乗りかえる前に、
       いまのブラウザの ⚙設定 →「書き出す」でバックアップを取り、Safari 側で読みこんでください。</p>`;
   return `
@@ -2702,6 +2726,12 @@ async function renderStorage(){
   const p = imgPreset();
   $$("#seg-imgq button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.prefs.imgQuality)));
   $("#imgq-note").textContent = p.note;
+  // カメラの持ちかた
+  const hold = state.prefs.camHold === "keep" ? "keep" : "release";
+  $$("#seg-camhold button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === hold)));
+  $("#camhold-note").textContent = hold === "keep"
+    ? "撮ったあと100秒くらいカメラを持っておきます。続けて撮るときが速く、許可も聞かれにくいですが、そのあいだ音楽が止まったままになることがあります。"
+    : "既定。撮った瞬間にカメラを手放すので、止まった音楽が戻りやすくなります。そのかわり撮るたびにカメラを起こし直します。";
   // 自動お掃除
   $$("#seg-trim button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === (state.prefs.trimDays | 0))));
 
@@ -2890,6 +2920,14 @@ function bindUI(){
     const b = e.target.closest("button"); if (!b) return;
     state.prefs.imgQuality = b.dataset.v;
     savePrefs(); renderStorage();
+  };
+
+  // カメラの持ちかた
+  $("#seg-camhold").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.prefs.camHold = b.dataset.v;
+    savePrefs(); renderStorage();
+    if (b.dataset.v === "release") camRelease();   // すぐ効かせる
   };
 
   // 定着ずみの自動お掃除

@@ -722,6 +722,9 @@ input[type=range]{accent-color:var(--accent);}
         this.stop();
       } else if (this._wasRunning) {
         this._wasRunning = false;
+        // 画面に出ていないなら起こし直さない。組み込み先で隠されているときに
+        // 勝手に復帰すると、再生中の音楽をもう一度止めてしまう
+        if (this.offsetParent === null) return;
         this.start().catch(() => this.showPerm());
       }
     }
