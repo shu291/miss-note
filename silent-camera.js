@@ -702,6 +702,14 @@ input[type=range]{accent-color:var(--accent);}
         this.stream = null;
         this.track = null;
       }
+      // 映像要素からも必ず切り離す。srcObject を差したままだとブラウザが
+      // 「まだ再生中」とみなし、端末の音の権利を返さないことがある
+      // （＝他アプリの音楽が止まったまま戻ってこない）
+      const v = this.el && this.el.video;
+      if (v && v.srcObject) {
+        try { v.pause(); } catch (e) { /* 停止済みなら何もしなくてよい */ }
+        v.srcObject = null;
+      }
     }
 
     /* いま映像が流れているか。組み込み先が「すでに動いていれば取り直さない」を

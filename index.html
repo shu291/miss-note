@@ -778,6 +778,7 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
     </div>
 
     <button class="btn wide" data-close style="margin-top:14px">閉じる</button>
+    <p class="muted" style="margin:10px 0 0;text-align:center;font-size:11.5px">ミスノート <span id="app-ver">—</span></p>
   </div>
 </div>
 
@@ -901,6 +902,10 @@ const DB = (() => {
   };
 })();
 
+/* 動いている版。sw.js の CACHE と必ずそろえる。
+   「直したはずなのに直っていない」が古いキャッシュのせいか切り分けるために出す */
+const APP_VER = "v12";
+
 /* ---------- 状態 ---------- */
 const state = {
   view: "add",                // 起動時の画面。撮ってすぐ登録できるよう「追加」から始める
@@ -1018,6 +1023,7 @@ async function refURL(note){
   applyTheme();
   buildChips();
   bindUI();
+  $("#app-ver").textContent = APP_VER;
   buildQueue();
   render();
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
