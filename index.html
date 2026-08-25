@@ -342,6 +342,58 @@ nav.tabs .badge[hidden]{display:none}
 .spark .col .b.zero{background:var(--surface-2)}
 .spark-x{display:flex;gap:3px;margin-top:5px}
 .spark-x span{flex:1;text-align:center;font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ページから複数問 */
+.mu-stage{background:#111;border-radius:12px;overflow:hidden;
+  display:grid;place-items:center;touch-action:manipulation;user-select:none}
+/* 線を写真にぴったり重ねるため、写真と同じ大きさの入れ物をはさむ */
+.mu-inner{position:relative;display:inline-block;line-height:0;cursor:crosshair}
+.mu-inner img{display:block;max-width:100%;max-height:44vh}
+.mu-cuts{position:absolute;inset:0}
+.mu-cuts .cut{position:absolute;left:0;right:0;height:22px;margin-top:-11px;cursor:pointer;
+  display:flex;align-items:center}
+.mu-cuts .cut::before{content:"";flex:1;height:2px;background:var(--accent);box-shadow:0 0 0 1px rgba(255,255,255,.55)}
+.mu-cuts .cut span{position:absolute;right:6px;top:1px;background:var(--accent);color:#fff;
+  font-size:10px;font-weight:700;border-radius:6px;padding:1px 6px}
+.mu-cuts .no{position:absolute;left:6px;background:rgba(0,0,0,.7);color:#fff;line-height:1.4;
+  font-size:12px;font-weight:700;border-radius:7px;padding:2px 8px;min-width:12px;
+  text-align:center;pointer-events:none}
+.mu-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.mu-row:first-child{border-top:0}
+.mu-row .th{width:74px;height:44px;border-radius:8px;overflow:hidden;background:var(--surface-2);flex:none}
+.mu-row .th img{width:100%;height:100%;object-fit:cover;display:block}
+.mu-row .lb{flex:1;font-size:12.5px;color:var(--ink-2);min-width:0}
+.mu-row .lb b{color:var(--ink);font-size:13.5px}
+.mu-row input{width:72px;padding:8px;border-radius:9px;border:1px solid var(--ring);
+  background:var(--surface);color:var(--ink);font-size:15px;text-align:center;font-variant-numeric:tabular-nums}
+.mu-row .x{background:none;border:0;color:var(--muted);font-size:17px;padding:6px;cursor:pointer}
+.mu-row .th{padding:0;border:0;cursor:pointer}
+.mu-row.off{opacity:.42}
+.mu-row.off .th{outline:2px dashed var(--muted);outline-offset:-2px}
+.mu-cuts .no.off{background:rgba(0,0,0,.35);font-weight:400}
+
+/* 続けた記録（カレンダー） */
+.streak{display:flex;gap:10px;margin-top:10px}
+.streak .s{flex:1;background:var(--surface-2);border-radius:12px;padding:10px 11px;text-align:center}
+.streak .s .k{font-size:11px;color:var(--ink-2);font-weight:600}
+.streak .s .v{font-size:22px;font-weight:700;line-height:1.3;margin-top:1px}
+.streak .s .v small{font-size:12px;font-weight:600;color:var(--ink-2);margin-left:1px}
+.streak .s.on .v{color:var(--accent)}
+.cal-wrap{margin-top:12px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.cal{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,1fr);gap:3px;width:max-content}
+.cal i{width:13px;height:13px;border-radius:3px;background:var(--surface-2);display:block}
+/* 濃さは不透明度で出す。color-mix が無い環境でも同じ見た目になる */
+.cal i.l1{background:var(--bar);opacity:.3}
+.cal i.l2{background:var(--bar);opacity:.55}
+.cal i.l3{background:var(--bar);opacity:.78}
+.cal i.l4{background:var(--bar)}
+.cal i.today{box-shadow:0 0 0 2px var(--accent)}
+.cal i.future{visibility:hidden}
+.cal-m{display:grid;grid-auto-flow:column;gap:3px;width:max-content;margin-bottom:4px}
+/* 升目と同じ幅にして列をそろえる。月名は右にはみ出して構わない */
+.cal-m span{width:13px;font-size:9.5px;color:var(--muted);white-space:nowrap;overflow:visible}
+.cal-legend{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:10.5px;color:var(--muted)}
+.cal-legend i{width:11px;height:11px;border-radius:3px;display:block}
 .nudge{
   margin-top:12px;background:var(--surface);border:1px solid var(--ring);
   border-left:4px solid var(--warn);border-radius:14px;padding:13px 14px;box-shadow:var(--shadow);
@@ -465,6 +517,38 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
   .crop-stage, .crop-stage img{max-height:60vh}
 }
 @keyframes pop{from{transform:translate(-50%,-47%);opacity:.5}to{transform:translate(-50%,-50%);opacity:1}}
+
+/* =========================================================
+   印刷（🖨 / iPad は「PDFで保存」も同じ画面から）
+   画面では #print-root を隠し、印刷のときだけ逆にする。
+   ========================================================= */
+#print-root{display:none}
+@media print{
+  /* 画面用の要素は全部止める。印刷紙は白＋黒に固定 */
+  body > *{display:none !important}
+  body > #print-root{display:block !important}
+  html,body{background:#fff !important;color:#000 !important;margin:0;padding:0}
+  @page{size:A4;margin:12mm}
+  .pr-head{border-bottom:1.5px solid #000;padding-bottom:6px;margin-bottom:10px}
+  .pr-head h1{font-size:15pt;margin:0}
+  .pr-head .m{font-size:9pt;color:#444;margin-top:3px}
+  .pr-grid{display:grid;gap:8mm}
+  .pr-grid.per1{grid-template-columns:1fr}
+  .pr-grid.per2{grid-template-columns:1fr}
+  .pr-grid.per4{grid-template-columns:1fr 1fr}
+  .pr-item{break-inside:avoid;page-break-inside:avoid;border:1px solid #999;border-radius:2mm;padding:4mm}
+  .pr-item .n{font-size:10pt;font-weight:700;border-bottom:1px solid #ccc;padding-bottom:2mm;margin-bottom:3mm}
+  .pr-item .n span{font-weight:400;color:#444;margin-left:6px;font-size:9pt}
+  .pr-item img{display:block;width:auto;max-width:100%;height:auto;max-height:var(--prh);margin:0 auto}
+  .pr-item .memo{font-size:9.5pt;line-height:1.7;margin-top:3mm;white-space:pre-wrap}
+  /* 書き込み欄。罫線は本物の枠線で引く
+     （背景で描くと、ブラウザの「背景を印刷しない」設定で消えてしまう） */
+  .pr-item .blank{margin-top:3mm}
+  .pr-item .blank u{display:block;height:7.5mm;border-bottom:1px solid #ccc;text-decoration:none}
+  .pr-item .none{font-size:9.5pt;color:#666;margin-top:3mm}
+  .pr-break{break-before:page;page-break-before:always}
+  .pr-foot{margin-top:6mm;font-size:8pt;color:#666;text-align:center}
+}
 </style>
 </head>
 <body>
@@ -499,6 +583,7 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
           </div>
         </div>
         <input type="file" accept="image/*" id="file-input" class="visually-hidden">
+        <button class="btn ghost wide" id="btn-multi" style="margin-top:10px">📄 ページ全体を撮って、まとめて登録</button>
 
         <label class="field">
           <span>参考書 <span class="opt">（選ぶと教科も自動で入ります）</span></span>
@@ -577,6 +662,9 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
         <button data-v="mastered" aria-pressed="false">定着ずみ</button>
       </div>
       <div class="chips" id="filter-subject" style="margin-top:10px"></div>
+      <div class="btn-row" style="margin-top:10px">
+        <button class="btn ghost" id="btn-print">🖨 いま見えているぶんを印刷</button>
+      </div>
       <div id="list-body"></div>
     </section>
 
@@ -782,6 +870,74 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
   </div>
 </div>
 
+<!-- ページから複数問 -->
+<div class="modal" id="modal-multi" role="dialog" aria-modal="true" aria-label="ページから複数問">
+  <div class="scrim" data-close></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="row-between"><h3 style="margin:0">まとめて登録</h3><span class="muted" id="mu-count">—</span></div>
+    <p class="muted" style="margin:4px 0 10px">
+      線の位置で問題を切り分けます。<b>写真をタップ</b>で線を足し、<b>線をタップ</b>で消せます。
+    </p>
+    <div class="mu-stage">
+      <div class="mu-inner" id="mu-stage">
+        <img id="mu-img" alt="">
+        <div class="mu-cuts" id="mu-cuts"></div>
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="btn ghost" id="mu-auto">自動で区切りなおす</button>
+      <button class="btn ghost" id="mu-ocr">🔎 番号を読み取る</button>
+    </div>
+    <p class="muted" id="mu-note" style="margin:6px 0 0">「番号を読み取る」を押すと、問題番号を文字として読み取って区切りと番号を入れます。</p>
+    <div id="mu-list" style="margin-top:12px"></div>
+    <button class="btn primary wide" id="mu-save" style="margin-top:12px">まとめて登録する</button>
+    <button class="btn ghost wide" data-close style="margin-top:10px">やめる</button>
+  </div>
+</div>
+
+<!-- 印刷 -->
+<div class="modal" id="modal-print" role="dialog" aria-modal="true" aria-label="印刷">
+  <div class="scrim" data-close></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3>印刷する</h3>
+    <p class="sub" id="print-count">—</p>
+
+    <div class="card" style="margin-top:12px">
+      <b style="font-size:14px">中身</b>
+      <div class="seg" id="seg-pr-what" style="margin-top:10px">
+        <button data-v="q" aria-pressed="true">問題だけ</button>
+        <button data-v="qa" aria-pressed="false">問題＋解答</button>
+      </div>
+      <p class="muted" style="margin:6px 0 0" id="pr-what-note">—</p>
+    </div>
+
+    <div class="card">
+      <b style="font-size:14px">1ページに何問</b>
+      <div class="seg" id="seg-pr-per" style="margin-top:10px">
+        <button data-v="1" aria-pressed="false">1問</button>
+        <button data-v="2" aria-pressed="true">2問</button>
+        <button data-v="4" aria-pressed="false">4問</button>
+      </div>
+      <p class="muted" style="margin:6px 0 0">問題の写真が大きく出るほど、1ページに入る数は減ります。</p>
+    </div>
+
+    <div class="card">
+      <b style="font-size:14px">書き込み欄</b>
+      <div class="seg" id="seg-pr-blank" style="margin-top:10px">
+        <button data-v="0" aria-pressed="false">なし</button>
+        <button data-v="1" aria-pressed="true">つける</button>
+      </div>
+      <p class="muted" style="margin:6px 0 0">問題の下に、解き直し用の罫線を入れます。</p>
+    </div>
+
+    <button class="btn primary wide" id="pr-go" style="margin-top:14px">印刷ページを作る</button>
+    <p class="muted" style="margin:8px 0 0;text-align:center">iPad は印刷画面から「PDFで保存」もできます</p>
+    <button class="btn ghost wide" data-close style="margin-top:10px">とじる</button>
+  </div>
+</div>
+
 <!-- 無音カメラ -->
 <div class="modal" id="modal-cam" role="dialog" aria-modal="true" aria-label="無音カメラ">
   <div class="scrim" data-close></div>
@@ -803,6 +959,9 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- 印刷用。ふだんは非表示で、印刷のときだけこれだけが出る -->
+<div id="print-root" aria-hidden="true"></div>
 
 <script src="silent-camera.js"></script>
 <script>
@@ -904,7 +1063,7 @@ const DB = (() => {
 
 /* 動いている版。sw.js の CACHE と必ずそろえる。
    「直したはずなのに直っていない」が古いキャッシュのせいか切り分けるために出す */
-const APP_VER = "v12";
+const APP_VER = "v13";
 
 /* ---------- 状態 ---------- */
 const state = {
@@ -2110,7 +2269,9 @@ function openCamera(which){
     return;
   }
   clearTimeout(camWarmTimer);
-  $("#cam-title").textContent = crop.target === "q" ? "問題を撮る" : "解答・解説を撮る";
+  $("#cam-title").textContent =
+    crop.target === "multi" ? "ページ全体を撮る" :
+    crop.target === "q"     ? "問題を撮る" : "解答・解説を撮る";
   $("#cam-fallback").style.display = "none";
   $("#cam-help").hidden = true;
   $("#modal-cam").classList.add("open");
@@ -2127,7 +2288,11 @@ function bindCamera(){
     const blob = e.detail.blob;
     camKeepWarm();                                // すぐには手放さない（続けて撮るため）
     $("#modal-cam").classList.remove("open");
-    openCropper(blob, crop.target);
+    if (crop.target === "multi"){
+      openMulti(blob).catch(err => { console.error(err); toast("ページを読み取れませんでした"); });
+    } else {
+      openCropper(blob, crop.target);
+    }
     if (!state.prefs.camHintSeen){
       state.prefs.camHintSeen = true; savePrefs();
       toast("無音で撮れました");
@@ -2321,8 +2486,429 @@ async function encodeJPEG(source, sx, sy, sw, sh, maxEdge, q){
 }
 
 /* =========================================================
+   ページから複数問をまとめて登録
+
+   ページ全体を1枚撮って、問題ごとに切り分けて登録する。
+   切り分けは2段構え。
+     1) 自動 … 写真の「行ごとの黒さ」を数え、行間より明らかに広い
+               すき間を問題の切れ目とみなす。部品ゼロ・オフラインでも動く
+     2) OCR  … 問題番号（1. や (2)）を文字として読み取り、
+               その位置で区切りつつ番号も入れる。読み取り部品は
+               押したときだけ取りに行くので、ふだんの読み込みは重くならない
+   保存するのは切り分けた1問ずつの写真。左右の余白も落とすので、
+   ページを丸ごと持つより小さく、同じ画質なら字は大きく残る。
+   ========================================================= */
+const multi = { src: null, prof: null, cuts: [], nums: [], skip: [], busy: false };
+
+/* 解析用に小さくして二値化し、行・列ごとの「黒さ」を数える */
+function inkProfile(bmp){
+  const W = 760;
+  const scale = Math.min(1, W / bmp.width);
+  const w = Math.max(1, Math.round(bmp.width * scale));
+  const h = Math.max(1, Math.round(bmp.height * scale));
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const x = c.getContext("2d", { willReadFrequently: true });
+  x.drawImage(bmp, 0, 0, w, h);
+  const d = x.getImageData(0, 0, w, h).data;
+
+  const lum = new Uint8Array(w * h);
+  for (let i = 0, p = 0; i < d.length; i += 4, p++){
+    lum[p] = (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000;
+  }
+  // 紙の色に左右されないよう、明るさの中央値を基準にしきい値を決める
+  const hist = new Uint32Array(256);
+  for (let p = 0; p < lum.length; p++) hist[lum[p]]++;
+  let acc = 0, median = 128;
+  for (let v = 0; v < 256; v++){ acc += hist[v]; if (acc >= lum.length / 2){ median = v; break; } }
+  const th = Math.max(38, median - 45);
+
+  const bin = new Uint8Array(w * h);
+  const rows = new Uint32Array(h);
+  for (let y = 0; y < h; y++){
+    for (let xx = 0; xx < w; xx++){
+      const p = y * w + xx;
+      if (lum[p] < th){ bin[p] = 1; rows[y]++; }
+    }
+  }
+  return { w, h, rows, bin, scale };
+}
+
+/* 行間より明らかに広いすき間の真ん中を切れ目にする。返すのは高さに対する割合 */
+function autoCuts(prof){
+  const { h, w, rows } = prof;
+  const inkTh = Math.max(2, w * 0.006);
+  const gaps = [];
+  let s = -1;
+  for (let y = 0; y < h; y++){
+    const empty = rows[y] <= inkTh;
+    if (empty && s < 0) s = y;
+    if (!empty && s >= 0){ gaps.push([s, y - 1]); s = -1; }
+  }
+  if (s >= 0) gaps.push([s, h - 1]);
+
+  const inner = gaps.filter(g => g[0] > 0 && g[1] < h - 1);
+  if (!inner.length) return [];
+  const sizes = inner.map(g => g[1] - g[0] + 1).sort((a, b) => a - b);
+  const med = sizes[Math.floor(sizes.length / 2)] || 1;
+  const need = Math.max(med * 2.0, h * 0.025);
+  return inner
+    .filter(g => g[1] - g[0] + 1 >= need)
+    .map(g => (g[0] + g[1]) / 2 / h);
+}
+
+/* i番目のかたまりの範囲（元画像のピクセル）。上下左右の余白を落とす */
+function muRect(i){
+  const p = multi.prof, cuts = multi.cuts;
+  const y0 = Math.round((i === 0 ? 0 : cuts[i - 1]) * p.h);
+  const y1 = Math.round((i === cuts.length ? 1 : cuts[i]) * p.h);
+  const inkTh = Math.max(2, p.w * 0.006);
+  let a = y0, b = y1;
+  while (a < b - 1 && p.rows[a] <= inkTh) a++;
+  while (b > a + 1 && p.rows[b - 1] <= inkTh) b--;
+  if (b - a < 8){ a = y0; b = y1; }                       // 真っ白なら切らずに使う
+
+  const cols = new Uint32Array(p.w);
+  for (let y = a; y < b; y++){
+    const off = y * p.w;
+    for (let x = 0; x < p.w; x++) if (p.bin[off + x]) cols[x]++;
+  }
+  const cth = Math.max(1, (b - a) * 0.004);
+  let l = 0, r = p.w - 1;
+  while (l < r && cols[l] <= cth) l++;
+  while (r > l && cols[r] <= cth) r--;
+  if (r - l < 20){ l = 0; r = p.w - 1; }
+
+  const padY = Math.round(p.h * 0.008), padX = Math.round(p.w * 0.012);
+  a = Math.max(0, a - padY); b = Math.min(p.h, b + padY);
+  l = Math.max(0, l - padX); r = Math.min(p.w - 1, r + padX);
+
+  const k = 1 / p.scale;                                   // 元画像のピクセルに戻す
+  return {
+    sx: Math.round(l * k), sy: Math.round(a * k),
+    sw: Math.max(1, Math.round((r - l + 1) * k)),
+    sh: Math.max(1, Math.round((b - a) * k)),
+  };
+}
+
+async function openMulti(blob){
+  multi.src = await createImageBitmap(blob);
+  multi.prof = inkProfile(multi.src);
+  multi.cuts = autoCuts(multi.prof);
+  multi.nums = []; multi.skip = [];
+  $("#mu-img").src = URL.createObjectURL(blob);
+  $("#mu-note").textContent = multi.cuts.length
+    ? "自動で区切りました。ズレていたら線を足す／消すで直せます。"
+    : "切れ目が見つかりませんでした。写真をタップして線を引いてください。";
+  $("#modal-multi").classList.add("open");
+  await new Promise(r => { const im = $("#mu-img"); im.complete ? r() : (im.onload = r); });
+  await muRender();
+}
+function closeMulti(){
+  $("#modal-multi").classList.remove("open");
+  const im = $("#mu-img");
+  if (im.src.startsWith("blob:")) URL.revokeObjectURL(im.src);
+  im.removeAttribute("src");
+  multi.src?.close?.();
+  multi.src = null; multi.prof = null; multi.cuts = []; multi.nums = []; multi.skip = [];
+  muThumbCache.forEach(u => URL.revokeObjectURL(u));
+  muThumbCache.clear();
+  $("#mu-list").innerHTML = "";
+  $("#mu-cuts").innerHTML = "";
+}
+
+const muUse = i => !multi.skip[i];
+const muUsedCount = () => Array.from({ length: multi.cuts.length + 1 }, (_, i) => i).filter(muUse).length;
+
+async function muRender(){
+  const n = multi.cuts.length + 1;
+  const use = muUsedCount();
+  $("#mu-count").textContent = use === n ? `${n}問` : `${n}個中 ${use}問を登録`;
+  $("#mu-save").textContent = use ? `${use}問をまとめて登録する` : "登録するものがありません";
+  $("#mu-save").disabled = !use;
+
+  // 写真の上の線と番号
+  $("#mu-cuts").innerHTML =
+    multi.cuts.map((r, i) => `<div class="cut" data-cut="${i}" style="top:${(r * 100).toFixed(3)}%"><span>✕</span></div>`).join("")
+    + Array.from({ length: n }, (_, i) => {
+        const top = i === 0 ? 0 : multi.cuts[i - 1];
+        const bot = i === multi.cuts.length ? 1 : multi.cuts[i];
+        return `<div class="no${muUse(i) ? "" : " off"}" style="top:calc(${((top + bot) / 2 * 100).toFixed(3)}% - 9px)">${muUse(i) ? i + 1 : "とばす"}</div>`;
+      }).join("");
+
+  // 下の一覧（サムネイルと問題番号）。サムネイルを押すと「とばす」に切り替わる
+  const rows = [];
+  for (let i = 0; i < n; i++){
+    const r = muRect(i);
+    const url = await muThumb(r);
+    rows.push(`
+      <div class="mu-row${muUse(i) ? "" : " off"}">
+        <button class="th" data-skip="${i}" aria-label="${muUse(i) ? "とばす" : "登録する"}"><img src="${url}" alt=""></button>
+        <div class="lb">${muUse(i) ? `<b>${i + 1}つめ</b>` : `<b>とばす</b>`}<br>${r.sw}×${r.sh}</div>
+        <label class="lb" style="flex:none">問<input type="number" inputmode="numeric" data-num="${i}" value="${multi.nums[i] ?? ""}" placeholder="—" ${muUse(i) ? "" : "disabled"}></label>
+        ${i < multi.cuts.length ? `<button class="x" data-del="${i}" aria-label="次との境目を消す">⤫</button>` : `<span style="width:29px"></span>`}
+      </div>`);
+  }
+  $("#mu-list").innerHTML = rows.join("");
+  $$("#mu-list [data-num]").forEach(el => el.oninput = () => {
+    multi.nums[+el.dataset.num] = el.value ? +el.value : null;
+  });
+  $$("#mu-list [data-skip]").forEach(b => b.onclick = async () => {
+    const i = +b.dataset.skip;
+    multi.skip[i] = !multi.skip[i];
+    await muRender();
+  });
+  $$("#mu-list [data-del]").forEach(b => b.onclick = async () => {
+    const i = +b.dataset.del;
+    multi.cuts.splice(i, 1);
+    multi.nums.splice(i + 1, 1);
+    multi.skip.splice(i + 1, 1);
+    await muRender();
+  });
+}
+const muThumbCache = new Map();
+async function muThumb(r){
+  const key = `${r.sx},${r.sy},${r.sw},${r.sh}`;
+  if (muThumbCache.has(key)) return muThumbCache.get(key);
+  const blob = await encodeJPEG(multi.src, r.sx, r.sy, r.sw, r.sh, 220, 0.5);
+  const u = URL.createObjectURL(blob);
+  muThumbCache.set(key, u);
+  return u;
+}
+
+/* ---------- 番号の読み取り（OCR） ----------
+   読み取り部品（tesseract.js）は押したときだけ CDN から取りに行く。
+   cacheMethod:"none" にしてあるので、アプリの保存領域には何も残さない
+   （ブラウザのふつうのキャッシュに任せる＝「あと何問入るか」に響かない）。 */
+let tessLoading = null;
+function loadTesseract(){
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (tessLoading) return tessLoading;
+  tessLoading = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+    s.onload = () => res(window.Tesseract);
+    s.onerror = () => { tessLoading = null; rej(new Error("load")); };
+    document.head.appendChild(s);
+  });
+  return tessLoading;
+}
+
+async function muOCR(){
+  if (multi.busy || !multi.src) return;
+  multi.busy = true;
+  const btn = $("#mu-ocr"), note = $("#mu-note");
+  btn.disabled = true;
+  const say = t => { note.textContent = t; };
+  say("読み取りの準備をしています…（初回だけ少し時間がかかります）");
+  let worker = null;
+  try {
+    const T = await loadTesseract();
+    worker = await T.createWorker("eng", 1, {
+      cacheMethod: "none",
+      logger: m => { if (m.status === "recognizing text") say(`読み取り中… ${Math.round(m.progress * 100)}%`); },
+    });
+    // ページ全部を読ませると遅いうえ、日本語は eng では読めず無駄になる。
+    // 問題番号は本文の左はしに並ぶので、その帯だけを解像度そのままで読ませる。
+    const strip = muLeftStrip();
+    await worker.setParameters({ tessedit_pageseg_mode: "6" });   // 1つのまとまった文章として読む
+    const { data } = await worker.recognize(strip.canvas);
+    const found = pickNumbers(data.words || [], strip.canvas.width, strip.canvas.height, strip);
+    if (found.length < 2){
+      say("問題番号を見つけられませんでした。自動の区切りのままにするか、線を手で足してください。");
+      return;
+    }
+    // 1つめの番号より上に何か書いてあれば（章のタイトルなど）、そこも1つの
+    // かたまりとして切り離し、はじめから「とばす」にしておく
+    const lead = found[0].y > 0.02;
+    const clamp = v => Math.max(0.001, Math.min(0.999, v));
+    multi.cuts = (lead ? found : found.slice(1)).map(f => clamp(f.y));
+    multi.nums = lead ? [null, ...found.map(f => f.n)] : found.map(f => f.n);
+    multi.skip = lead ? [true] : [];
+    say(`問題番号を ${found.length}個 読み取りました（${found.map(f => f.n).join(", ")}）。ズレていたら線で直せます。`);
+    await muRender();
+  } catch (e){
+    console.error(e);
+    say(navigator.onLine
+      ? "読み取り部品を読み込めませんでした。線は手で足せます。"
+      : "オフラインでは番号の読み取りは使えません。線は手で足せます。");
+  } finally {
+    if (worker) await worker.terminate().catch(()=>{});
+    btn.disabled = false;
+    multi.busy = false;
+  }
+}
+
+/* 本文の左はしの帯だけを切り出す（＝番号が並ぶところ）。解像度は落とさない */
+function muLeftStrip(){
+  const p = multi.prof;
+  const cols = new Uint32Array(p.w);
+  for (let y = 0; y < p.h; y++){
+    const off = y * p.w;
+    for (let x = 0; x < p.w; x++) if (p.bin[off + x]) cols[x]++;
+  }
+  const th = Math.max(1, p.h * 0.002);
+  let l = 0, r = p.w - 1;
+  while (l < r && cols[l] <= th) l++;
+  while (r > l && cols[r] <= th) r--;
+  const width = Math.max(1, r - l + 1);
+  const k = 1 / p.scale;
+  const sx = Math.max(0, Math.round((l - p.w * 0.01) * k));
+  const sw = Math.min(multi.src.width - sx, Math.round(width * 0.30 * k));
+
+  const c = document.createElement("canvas");
+  // 縦が長すぎるときだけ縮める（数字の高さが保てる範囲で）
+  const sk = Math.min(1, 2600 / multi.src.height);
+  c.width = Math.max(1, Math.round(sw * sk));
+  c.height = Math.max(1, Math.round(multi.src.height * sk));
+  const x2 = c.getContext("2d");
+  x2.fillStyle = "#fff"; x2.fillRect(0, 0, c.width, c.height);
+  x2.drawImage(multi.src, sx, 0, sw, multi.src.height, 0, 0, c.width, c.height);
+  return { canvas: c, sx, sw };
+}
+
+/* OCR結果から「左はしに並ぶ、増えていく番号」だけを拾う。
+   日本語は eng では読めず文字化けするが、番号は数字なので拾える。 */
+function pickNumbers(words, W, H){
+  const cand = [];
+  for (const w of words){
+    const t = String(w.text || "").trim();
+    const m = t.match(/^\(?(\d{1,3})\)?[.．、,:：]?$/);
+    if (!m) continue;
+    if ((w.confidence ?? 0) < 55) continue;
+    const b = w.bbox || {};
+    if (b.x0 == null) continue;
+    if (b.x0 > W * 0.55) continue;                 // 帯の中でもさらに左寄りのものだけ
+    const hgt = b.y1 - b.y0;
+    if (hgt < H * 0.006 || hgt > H * 0.09) continue;
+    cand.push({ n: +m[1], y: b.y0 / H, x: b.x0 });
+  }
+  cand.sort((a, b) => a.y - b.y);
+
+  // 増えていく並びだけ残す（縦に十分はなれていること）
+  const out = [];
+  for (const c of cand){
+    const last = out[out.length - 1];
+    if (!last){ out.push(c); continue; }
+    if (c.y - last.y < 0.04) continue;             // 近すぎるものは同じ行の誤検出
+    if (c.n <= last.n) continue;
+    out.push(c);
+  }
+  return out;
+}
+
+async function muSave(){
+  if (!multi.src || multi.busy) return;
+  const idx = Array.from({ length: multi.cuts.length + 1 }, (_, i) => i).filter(muUse);
+  const n = idx.length;
+  if (!n) return;
+  const book = bookById(state.draft.bookId);
+  const pageNo = book ? numOrNull($("#in-pageno").value) : null;
+  const btn = $("#mu-save");
+  multi.busy = true; btn.disabled = true;
+  const saved = [];
+  try {
+    const p = imgPreset();
+    for (let k = 0; k < n; k++){
+      const i = idx[k];
+      btn.textContent = `登録中… ${k + 1}/${n}`;
+      const r = muRect(i);
+      const blob = await encodeJPEG(multi.src, r.sx, r.sy, r.sw, r.sh, p.max, p.q);
+      const imgId = uid();
+      await putImageSafely(imgId, blob);
+      saved.push(imgId);
+      const qNo = multi.nums[i] ?? null;
+      const note = {
+        id: uid(),
+        createdAt: Date.now() + k,               // 並び順が入れ替わらないように1msずつずらす
+        subject: state.draft.subject || (book ? book.subject : null) || "その他",
+        cause: state.draft.cause || "未分類",
+        bookId: book ? book.id : null,
+        book: book ? book.name : "",
+        pageNo, qNo,
+        page: book ? pageLabel(pageNo, qNo) : "",
+        unit: $("#in-unit").value.trim(),
+        memo: "",
+        qImg: imgId, aImg: null,
+        step: 0,
+        dueAt: today() + INTERVALS[0] * DAY,
+        mastered: false,
+        history: [],
+      };
+      await DB.put("notes", note);
+      state.notes.push(note);
+    }
+    if (book && pageNo != null){ book.lastPageNo = pageNo; savePrefs(); }
+    closeMulti();
+    resetDraft();
+    renderAdd();
+    updateBadge();
+    toast(`${n}問を登録しました → 明日から出ます`);
+  } catch (e){
+    console.error(e);
+    for (const id of saved) await DB.del("images", id).catch(()=>{});
+    toast(isQuotaError(e)
+      ? "保存領域がいっぱいです。設定の「写真を軽くする」をお試しください"
+      : "保存できませんでした");
+  } finally {
+    multi.busy = false; btn.disabled = false;
+    btn.textContent = "まとめて登録する";
+  }
+}
+
+function bindMulti(){
+  $("#btn-multi").onclick = () => openCamera("multi");
+  $("#mu-auto").onclick = async () => {
+    if (!multi.prof) return;
+    multi.cuts = autoCuts(multi.prof);
+    multi.nums = []; multi.skip = [];
+    $("#mu-note").textContent = multi.cuts.length
+      ? "自動で区切りなおしました。"
+      : "切れ目が見つかりませんでした。写真をタップして線を引いてください。";
+    await muRender();
+  };
+  $("#mu-ocr").onclick = muOCR;
+  $("#mu-save").onclick = muSave;
+
+  // 写真をタップ＝線を足す／線をタップ＝消す
+  $("#mu-stage").addEventListener("click", async e => {
+    if (!multi.prof) return;
+    const cut = e.target.closest("[data-cut]");
+    if (cut){
+      const i = +cut.dataset.cut;
+      multi.cuts.splice(i, 1);
+      multi.nums.splice(i + 1, 1);
+      multi.skip.splice(i + 1, 1);
+      await muRender();
+      return;
+    }
+    const im = $("#mu-img");
+    const r = im.getBoundingClientRect();
+    const y = (e.clientY - r.top) / r.height;
+    if (y <= 0.005 || y >= 0.995) return;
+    if (multi.cuts.some(c => Math.abs(c - y) < 0.012)) return;   // 近すぎる線は足さない
+    multi.cuts.push(y);
+    multi.cuts.sort((a, b) => a - b);
+    multi.nums = []; multi.skip = [];
+    await muRender();
+  });
+}
+
+/* =========================================================
    一覧
    ========================================================= */
+/* いま一覧に出ているミス。印刷もこれと同じものを使う（＝見えたまま刷れる） */
+function filteredNotes(){
+  let list = state.notes.slice();
+  if (state.filter.status === "active")   list = list.filter(n => !n.mastered);
+  if (state.filter.status === "mastered") list = list.filter(n => n.mastered);
+  if (state.filter.subject) list = list.filter(n => n.subject === state.filter.subject);
+  if (state.filter.book)    list = list.filter(n => n.book === state.filter.book);
+  // 参考書を選んでいるときはページ順、それ以外は新しい順
+  list.sort(state.filter.book ? byPageOrder : (a, b) => b.createdAt - a.createdAt);
+  return list;
+}
+
 function renderList(){
   const box = $("#list-body");
   const subs = [...new Set(state.notes.map(n => n.subject))];
@@ -2351,12 +2937,7 @@ function renderList(){
   $("#note-head").innerHTML = noteMode ? noteHead(state.filter.book) : "";
   if (noteMode) $("#note-cram").onclick = () => bookCram(state.filter.book);
 
-  let list = state.notes.slice();
-  if (state.filter.status === "active")   list = list.filter(n => !n.mastered);
-  if (state.filter.status === "mastered") list = list.filter(n => n.mastered);
-  if (state.filter.subject) list = list.filter(n => n.subject === state.filter.subject);
-  if (state.filter.book)    list = list.filter(n => n.book === state.filter.book);
-  list.sort(noteMode ? byPageOrder : (a,b) => b.createdAt - a.createdAt);
+  const list = filteredNotes();
 
   $("#list-count").textContent = noteMode
     ? "ページ順。タップすると写真と解答が出ます"
@@ -2426,6 +3007,146 @@ function bookCram(name){
   state.revealed = false;
   go("review");
 }
+/* =========================================================
+   印刷（紙に出して解き直す）
+
+   画面の一覧に出ているものを、そのまま A4 に並べる。
+   解答は必ず別ページにまとめるので、そのまま小テストになる。
+   ========================================================= */
+const printOpt = { what: "q", per: 2, blank: 1 };
+/* 1ページあたりの問題数ごとに、写真の高さと書き込み欄の高さを決める */
+const PRINT_SIZE = {
+  1: { img: "148mm", lines: 8 },
+  2: { img: "70mm",  lines: 4 },
+  4: { img: "46mm",  lines: 2 },
+};
+
+function printScopeLabel(){
+  const parts = [];
+  if (state.filter.book) parts.push("📕 " + state.filter.book);
+  if (state.filter.subject) parts.push(state.filter.subject);
+  if (state.filter.status === "active")   parts.push("復習中");
+  if (state.filter.status === "mastered") parts.push("定着ずみ");
+  return parts.length ? parts.join(" ・ ") : "ぜんぶ";
+}
+function openPrint(){
+  const list = filteredNotes();
+  if (!list.length){ toast("印刷できるミスがありません"); return; }
+  $("#print-count").textContent = `${printScopeLabel()}　${list.length}問`;
+  syncPrintSegs();
+  $("#modal-print").classList.add("open");
+}
+function syncPrintSegs(){
+  $$("#seg-pr-what button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === printOpt.what)));
+  $$("#seg-pr-per  button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === printOpt.per)));
+  $$("#seg-pr-blank button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === printOpt.blank)));
+  $("#pr-what-note").textContent = printOpt.what === "qa"
+    ? "解答は最後にまとめて刷ります。問題と同じ番号がふってあるので、そのまま答え合わせできます。"
+    : "問題だけ。答えは手元のアプリで確認します。";
+}
+
+/* 問題1つぶんの枠 */
+function printItem(no, n, url, size, blank){
+  const where = [n.book ? "📕 " + n.book : "", n.page, n.unit].filter(Boolean).join(" ");
+  const body = url
+    ? `<img src="${url}" alt="">`
+    : `<div class="memo">${esc(n.memo || "（写真もメモもありません）")}</div>`;
+  return `
+    <div class="pr-item" style="--prh:${size.img}">
+      <div class="n">${no}. <span>${esc(n.subject)}${where ? " ／ " + esc(where) : ""}</span></div>
+      ${body}
+      ${url && n.memo ? `<div class="memo">${esc(n.memo)}</div>` : ""}
+      ${blank ? `<div class="blank">${"<u></u>".repeat(size.lines)}</div>` : ""}
+    </div>`;
+}
+/* 解答1つぶんの枠 */
+function printAnswer(no, n, url, size){
+  const body = url
+    ? `<img src="${url}" alt="">`
+    : n.memo
+      ? `<div class="memo">${esc(n.memo)}</div>`
+      : `<div class="none">解答の写真は登録されていません。</div>`;
+  return `
+    <div class="pr-item" style="--prh:${size.img}">
+      <div class="n">${no}. <span>${esc(n.subject)}</span></div>
+      ${body}
+      ${url && n.memo ? `<div class="memo">${esc(n.memo)}</div>` : ""}
+    </div>`;
+}
+/* per問ずつに切って、かたまりごとに改ページする（CSSだけだと数が揃わない） */
+function printPages(items, per){
+  const out = [];
+  for (let i = 0; i < items.length; i += per){
+    const first = i === 0;
+    out.push(`<div class="pr-grid per${per}"${first ? "" : ` style="break-before:page;page-break-before:always"`}>`
+      + items.slice(i, i + per).join("") + `</div>`);
+  }
+  return out.join("");
+}
+
+async function buildPrint(list){
+  const per = printOpt.per;
+  const size = PRINT_SIZE[per];
+  const withA = printOpt.what === "qa";
+  const stamp = new Date().toLocaleDateString("ja-JP");
+
+  const qs = [];
+  for (let i = 0; i < list.length; i++){
+    const n = list[i];
+    let u = await imgURL(n.qImg);
+    if (!u && n.ref) u = await refURL(n);
+    qs.push(printItem(i + 1, n, u, size, !!printOpt.blank));
+  }
+
+  let html = `
+    <div class="pr-head">
+      <h1>ミスノート — ${esc(printScopeLabel())}</h1>
+      <div class="m">${list.length}問 ・ ${esc(stamp)}${withA ? " ・ 解答は最後のページから" : ""}</div>
+    </div>
+    ${printPages(qs, per)}`;
+
+  if (withA){
+    const as = [];
+    for (let i = 0; i < list.length; i++){
+      as.push(printAnswer(i + 1, list[i], await imgURL(list[i].aImg), size));
+    }
+    html += `
+      <div class="pr-head pr-break" style="margin-top:0">
+        <h1>解答 — ${esc(printScopeLabel())}</h1>
+        <div class="m">問題と同じ番号です</div>
+      </div>
+      ${printPages(as, per)}`;
+  }
+  html += `<div class="pr-foot">ミスノート ${APP_VER}</div>`;
+  return html;
+}
+
+async function doPrint(){
+  const list = filteredNotes();
+  if (!list.length){ toast("印刷できるミスがありません"); return; }
+  const btn = $("#pr-go");
+  btn.disabled = true; btn.textContent = "作っています…";
+  const root = $("#print-root");
+  try {
+    root.innerHTML = await buildPrint(list);
+    // 写真が出そろう前に print すると白紙で刷られてしまう
+    await Promise.all([...root.querySelectorAll("img")].map(img =>
+      img.complete ? Promise.resolve() : new Promise(r => { img.onload = img.onerror = r; })
+    ));
+    closeModals();
+    // 印刷が終わったら中身を捨てる（写真をつかんだままにしない）
+    const clear = () => { root.innerHTML = ""; window.removeEventListener("afterprint", clear); };
+    window.addEventListener("afterprint", clear);
+    window.print();
+  } catch (e){
+    console.error(e);
+    root.innerHTML = "";
+    toast("印刷ページを作れませんでした");
+  } finally {
+    btn.disabled = false; btn.textContent = "印刷ページを作る";
+  }
+}
+
 function openBookNote(name){
   state.filter.book = name;
   state.filter.status = "all";
@@ -2602,6 +3323,8 @@ function renderStats(){
       </div>
     </div>` : ""}
 
+    ${scope ? "" : streakCard()}
+
     <div class="card">
       <b style="font-size:14px">この2週間の登録数</b>
       <p class="muted" style="margin:2px 0 0">記録し続けられているかを見る</p>
@@ -2624,6 +3347,109 @@ function renderStats(){
 
   box.querySelectorAll("[data-jump]").forEach(b => b.onclick = () => openDetail(b.dataset.jump));
   box.querySelectorAll("[data-note]").forEach(b => b.onclick = () => openBookNote(b.dataset.note));
+}
+
+/* =========================================================
+   続けた記録（連続日数とカレンダー）
+
+   「その日アプリで何かした」＝ミスを1問でも登録した／復習に1回でも答えた。
+   参考書で絞っていても続けた記録は全体で数える（習慣の話なので）。
+   ========================================================= */
+function activityDays(){
+  const m = new Map();                      // 日(0時) → {add, rev}
+  const bump = (t, k) => {
+    const d = startOfDay(t);
+    const v = m.get(d) || { add: 0, rev: 0 };
+    v[k]++; m.set(d, v);
+  };
+  state.notes.forEach(n => {
+    bump(n.createdAt, "add");
+    (n.history || []).forEach(h => bump(h.at, "rev"));
+  });
+  return m;
+}
+function streakInfo(days){
+  // いま続いている日数。今日まだ何もしていなくても、昨日までの連続は生きている扱い。
+  let cur = 0, d = today();
+  if (!days.has(d)) d = startOfDay(d - DAY);
+  while (days.has(d)){ cur++; d = startOfDay(d - DAY); }
+
+  // 最長の連続
+  const sorted = [...days.keys()].sort((a, b) => a - b);
+  let best = 0, run = 0, prev = null;
+  for (const t of sorted){
+    run = (prev !== null && startOfDay(prev + DAY) === t) ? run + 1 : 1;
+    prev = t;
+    if (run > best) best = run;
+  }
+  // 今月の学習日数
+  const now = new Date();
+  const monthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1).getTime());
+  const thisMonth = sorted.filter(t => t >= monthStart).length;
+  return { cur, best, total: sorted.length, thisMonth, doneToday: days.has(today()) };
+}
+/* 直近 weeks 週ぶんの升目。列＝週、行＝日〜土。 */
+function calendarHTML(days, weeks = 15){
+  const end = today();
+  const endDow = new Date(end).getDay();               // 今日の曜日（0=日）
+  const lastSunday = startOfDay(end - endDow * DAY);
+  const start = startOfDay(lastSunday - (weeks - 1) * 7 * DAY);
+
+  const cells = [], months = [];
+  for (let w = 0; w < weeks; w++){
+    let label = "";
+    for (let dow = 0; dow < 7; dow++){
+      const t = startOfDay(start + (w * 7 + dow) * DAY);
+      if (dow === 0){
+        const d = new Date(t);
+        // その週に月が変わったら月名を出す
+        if (w === 0 || d.getDate() <= 7) label = (d.getMonth() + 1) + "月";
+      }
+      if (t > end){ cells.push(`<i class="future"></i>`); continue; }
+      const v = days.get(t);
+      const n = v ? v.add + v.rev : 0;
+      const lv = n === 0 ? "" : n <= 2 ? "l1" : n <= 5 ? "l2" : n <= 10 ? "l3" : "l4";
+      const cls = [lv, t === end ? "today" : ""].filter(Boolean).join(" ");
+      const title = v
+        ? `${fmtDate(t)}　登録${v.add}・復習${v.rev}`
+        : `${fmtDate(t)}　なし`;
+      cells.push(`<i class="${cls}" title="${title}"></i>`);
+    }
+    months.push(`<span>${label}</span>`);
+  }
+  return `
+    <div class="cal-wrap">
+      <div class="cal-m">${months.join("")}</div>
+      <div class="cal">${cells.join("")}</div>
+    </div>
+    <div class="cal-legend">
+      <span>少ない</span><i style="background:var(--surface-2)"></i>
+      <i style="background:var(--bar);opacity:.3"></i><i style="background:var(--bar);opacity:.55"></i>
+      <i style="background:var(--bar);opacity:.78"></i><i style="background:var(--bar)"></i>
+      <span>多い</span>
+    </div>`;
+}
+function streakCard(){
+  const days = activityDays();
+  const s = streakInfo(days);
+  if (!s.total) return "";
+  const msg = s.cur === 0
+    ? "今日1問でも登録するか、復習を1回やれば、また始まります。"
+    : s.doneToday
+      ? (s.cur >= s.best && s.best > 1 ? `自己最長を更新中です。` : `いい流れです。明日も1問でつながります。`)
+      : `昨日までで ${s.cur}日。<b>今日やればのびます。</b>`;
+  return `
+    <div class="card">
+      <b style="font-size:14px">続けた記録</b>
+      <p class="muted" style="margin:2px 0 0">1問でも登録するか、復習を1回やれば「やった日」になります</p>
+      <div class="streak">
+        <div class="s${s.cur ? " on" : ""}"><div class="k">いま連続</div><div class="v">${s.cur}<small>日</small></div></div>
+        <div class="s"><div class="k">最長</div><div class="v">${s.best}<small>日</small></div></div>
+        <div class="s"><div class="k">今月</div><div class="v">${s.thisMonth}<small>日</small></div></div>
+      </div>
+      ${calendarHTML(days)}
+      <div class="insight">${msg}</div>
+    </div>`;
 }
 
 function tally(arr, keyFn){
@@ -2803,6 +3629,8 @@ async function renderStorage(){
    UI 配線
    ========================================================= */
 function closeModals(){
+  // まとめて登録は、閉じるときに読み込んだページの画像も片づける
+  if ($("#modal-multi").classList.contains("open")) closeMulti();
   $$(".modal").forEach(m => m.classList.remove("open"));
   camKeepWarm();   // すぐには手放さない。続けて撮るときに許可を聞かれ直さないため
 }
@@ -2831,10 +3659,17 @@ function bindUI(){
   };
   $("#file-input").onchange = e => {
     const f = e.target.files && e.target.files[0];
-    if (f) openCropper(f, crop.target);
+    if (!f) return;
+    if (crop.target === "multi"){
+      $("#file-input").value = "";
+      openMulti(f).catch(err => { console.error(err); toast("ページを読み取れませんでした"); });
+    } else {
+      openCropper(f, crop.target);
+    }
   };
   bindCropper();
   bindCamera();
+  bindMulti();
 
   $("#btn-save").onclick = saveNote;
 
@@ -2856,6 +3691,22 @@ function bindUI(){
     state.filter.book = state.filter.book === b.dataset.v ? null : b.dataset.v;
     renderList();
   };
+
+  // 印刷
+  $("#btn-print").onclick = openPrint;
+  $("#seg-pr-what").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    printOpt.what = b.dataset.v; syncPrintSegs();
+  };
+  $("#seg-pr-per").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    printOpt.per = +b.dataset.v; syncPrintSegs();
+  };
+  $("#seg-pr-blank").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    printOpt.blank = +b.dataset.v; syncPrintSegs();
+  };
+  $("#pr-go").onclick = doPrint;
   $("#stats-book").onclick = e => {
     const b = e.target.closest(".chip"); if (!b) return;
     state.statsBook = b.dataset.v || null;
