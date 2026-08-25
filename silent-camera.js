@@ -83,6 +83,21 @@
     return (b / Math.pow(1024, i)).toFixed(i ? 1 : 0) + ' ' + u[i];
   }
 
+  /* 「カメラが許可されていません」のときの直し方。ブラウザで手順が違う。
+     iPad/iPhone は許可をアプリ終了で忘れるが、Safari だけはサイトごとに覚えられる。
+     Chrome/Edge の iOS 版は中身が Safari（WebKit）なので、その記憶を持てない。 */
+  function permHint() {
+    const ua = navigator.userAgent;
+    const iOS =
+      /iPad|iPhone|iPod/.test(ua) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!iOS)
+      return 'アドレスバーの 🔒（またはカメラのマーク）→「カメラ」を「許可する」にして、ページを再読み込みしてください。';
+    if (/CriOS|EdgiOS|FxiOS|OPiOS/.test(ua))
+      return 'iPad の Chrome や Edge は、サイトごとのカメラの許可を覚えられません。Safari で開くと一度で済みます。';
+    return 'アドレスバー左の「ぁあ」→ Webサイトの設定 →「カメラ」を「許可」にしてから、もう一度お試しください。';
+  }
+
   function loadSettings() {
     try {
       return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'));
@@ -646,10 +661,7 @@ input[type=range]{accent-color:var(--accent);}
           } catch (err3) {
             const name = err3 && err3.name;
             if (name === 'NotAllowedError')
-              return this.fail(
-                'カメラが許可されていません',
-                'Safari のアドレスバー左の「ぁあ」→ Webサイトの設定 →「カメラ」を「許可」にしてから、もう一度お試しください。'
-              );
+              return this.fail('カメラが許可されていません', permHint());
             if (name === 'NotFoundError')
               return this.fail('カメラが見つかりません', 'この端末にカメラがないようです。');
             return this.fail('カメラを起動できませんでした', (err3 && err3.message) || '');
@@ -690,6 +702,12 @@ input[type=range]{accent-color:var(--accent);}
         this.stream = null;
         this.track = null;
       }
+    }
+
+    /* いま映像が流れているか。組み込み先が「すでに動いていれば取り直さない」を
+       判断するために使う（iOS は取り直すたびに許可を聞き直すことがある） */
+    get isRunning() {
+      return !!(this.track && this.track.readyState === 'live');
     }
 
     async flip() {
