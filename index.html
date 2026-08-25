@@ -326,6 +326,15 @@ nav.tabs .badge[hidden]{display:none}
 .bar-row .track{grid-column:1/-1;display:block;height:9px;background:var(--surface-2);border-radius:5px;overflow:hidden}
 .bar-row .fill{display:block;height:100%;background:var(--bar);border-radius:5px;min-width:4px}
 .bar-row.accent .fill{background:var(--accent)}
+.qcmp{display:grid;gap:7px}
+.qcmp .r{display:grid;grid-template-columns:52px 1fr auto;gap:9px;align-items:center;font-size:12px}
+.qcmp .k{color:var(--ink-2)}
+.qcmp .t{height:9px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.qcmp .f{display:block;height:100%;background:var(--bar);border-radius:5px;min-width:4px}
+.qcmp .v{font-variant-numeric:tabular-nums;color:var(--ink-2);min-width:66px;text-align:right}
+.qcmp .r.on .k{color:var(--accent);font-weight:700}
+.qcmp .r.on .f{background:var(--accent)}
+.qcmp .r.on .v{color:var(--ink);font-weight:700}
 
 .spark{display:flex;align-items:flex-end;gap:3px;height:70px;margin-top:8px}
 .spark .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;gap:2px}
@@ -700,11 +709,13 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
       <b style="font-size:14px">写真の画質</b>
       <p class="muted" style="margin:6px 0 0">写真1枚あたりの大きさが変わります。これから撮るぶんに効きます（すでに撮ったぶんは下の「写真を軽くする」で縮められます）。</p>
       <div class="seg" id="seg-imgq" style="margin-top:10px">
+        <button data-v="min" aria-pressed="true">最小</button>
         <button data-v="light" aria-pressed="false">軽量</button>
-        <button data-v="std" aria-pressed="true">標準</button>
+        <button data-v="std" aria-pressed="false">標準</button>
         <button data-v="high" aria-pressed="false">高画質</button>
       </div>
       <p class="muted" style="margin:6px 0 0" id="imgq-note">—</p>
+      <div id="imgq-cmp" style="margin-top:12px"></div>
     </div>
 
     <div class="card">
@@ -787,11 +798,12 @@ const INTERVALS = [1, 3, 7, 16, 35];       // 正解するたびに次の段へ
 /* 写真の画質プリセット。max は長辺のピクセル数、q は JPEG の画質。
    ノートの写真は「文字が読めれば十分」なので、既定でもかなり絞ってある。 */
 const IMG_PRESETS = {
-  light: { label:"軽量",   max:1000, q:0.68, approx:  80 * 1024, note:"既定。1枚 約80KB／1GBで約6,500問。問題1問を切り抜くぶんには十分読めます" },
-  std:   { label:"標準",   max:1400, q:0.80, approx: 200 * 1024, note:"1枚 約200KB／1GBで約2,600問。ページ全体を撮ることが多いなら" },
+  min:   { label:"最小",   max: 700, q:0.58, approx:  35 * 1024, note:"既定。1枚 約35KB／1GBで約15,000問。問題を切り抜いて撮るならこれで十分読めます" },
+  light: { label:"軽量",   max:1000, q:0.68, approx:  80 * 1024, note:"1枚 約80KB／1GBで約6,500問。ページ全体を撮ることが多いならこちら" },
+  std:   { label:"標準",   max:1400, q:0.80, approx: 200 * 1024, note:"1枚 約200KB／1GBで約2,600問。細かい字までくっきり残したいとき" },
   high:  { label:"高画質", max:2000, q:0.90, approx: 680 * 1024, note:"1枚 約680KB／1GBで約770問。細かい図やグラフを撮るとき" },
 };
-const imgPreset = () => IMG_PRESETS[state.prefs.imgQuality] || IMG_PRESETS.std;
+const imgPreset = () => IMG_PRESETS[state.prefs.imgQuality] || IMG_PRESETS.min;
 
 const SUBJECTS = ["数学","英語","物理","化学","生物","地学","情報","その他"];
 /* 「なぜ間違えた？」の初期値。設定から自分の言葉に変えられる（state.prefs.causes） */
@@ -878,7 +890,7 @@ const state = {
     cap: 20, theme: "auto", lastExportAt: null, backupHiddenUntil: null, installHidden: false,
     books: [],          // [{id, name, subject, createdAt}] 参考書＝ミスの置き場所
     lastBook: null,     // 前回ここに登録した参考書（次回も最初から選んでおく）
-    imgQuality: "light",// 写真の画質プリセット（IMG_PRESETS のキー）。既定は軽量
+    imgQuality: "min",  // 写真の画質プリセット（IMG_PRESETS のキー）。既定は最小
     trimDays: 0,        // 定着ずみの写真を自動で消すまでの日数。0＝しない
     storageHiddenUntil: null,
     camHintSeen: false,
@@ -968,11 +980,13 @@ async function refURL(note){
     state.notes = (await DB.all("notes")) || [];
     const p = await DB.get("prefs", "settings");
     if (p && p.v) Object.assign(state.prefs, p.v);
-    // 既定を「標準」から「軽量」に変えたので、すでに使っている端末にも一度だけ反映する。
-    // 以降は設定で選んだ値をそのまま尊重する。
-    if (!state.prefs.imgQualityMigrated){
-      state.prefs.imgQuality = "light";
-      state.prefs.imgQualityMigrated = true;
+    // 既定の画質を下げたときに、すでに使っている端末にも一度だけ反映する。
+    // 番号を上げるたびに1回だけ走り、以降は設定で選んだ値をそのまま尊重する。
+    const IMG_DEFAULT_VER = 2;
+    if ((state.prefs.imgDefaultVer | 0) < IMG_DEFAULT_VER){
+      state.prefs.imgQuality = "min";
+      state.prefs.imgDefaultVer = IMG_DEFAULT_VER;
+      delete state.prefs.imgQualityMigrated;   // 旧フラグは不要
       savePrefs();
     }
   } catch (e) {
@@ -2608,6 +2622,29 @@ async function renderStorage(){
   const box = $("#storage-box");
   const s = await storageInfo();
   const ph = await photoStats();
+
+  /* 画質ごとに「いまの写真が何MBになるか」を並べて見せる。
+     いま入っている写真の実サイズを基準に、プリセットの目安どうしの比で換算する。
+     写真がまだ無いときは1枚あたりの目安をそのまま出す。 */
+  {
+    const keys = Object.keys(IMG_PRESETS);
+    const est = k => ph.count
+      ? ph.bytes * (IMG_PRESETS[k].approx / p.approx)
+      : IMG_PRESETS[k].approx;
+    const maxV = Math.max(...keys.map(est));
+    $("#imgq-cmp").innerHTML = `
+      <div class="muted" style="margin-bottom:6px">${ph.count
+        ? `いまの写真 ${ph.count}枚 が、画質ごとにどれくらいになるか`
+        : "写真1枚あたりの目安"}</div>
+      <div class="qcmp">
+        ${keys.map(k => `
+          <div class="r${k === state.prefs.imgQuality ? " on" : ""}">
+            <span class="k">${IMG_PRESETS[k].label}</span>
+            <span class="t"><span class="f" style="width:${Math.max(3, est(k) / maxV * 100)}%"></span></span>
+            <span class="v">${fmtBytes(Math.round(est(k)))}</span>
+          </div>`).join("")}
+      </div>`;
+  }
   const pct = (s.usage != null && s.quota) ? Math.min(100, s.usage / s.quota * 100) : 0;
   const free = (s.usage != null && s.quota != null) ? s.quota - s.usage : null;
   // あと何問ぶん入るか（1問=写真2枚の想定）。数字にすると不安が減る。
@@ -2789,7 +2826,12 @@ function bindUI(){
     const btn = $("#btn-shrink"), label = btn.textContent;
     const ph = await photoStats();
     if (!ph.count){ toast("写真がまだありません"); return; }
-    if (!confirm(`保存ずみの写真 ${ph.count}枚（${fmtBytes(ph.bytes)}）を「${imgPreset().label}」まで縮めます。\n元の画質には戻せません。よろしいですか？`)) return;
+    // いま保存されている写真が、どの画質で入っているかは分からないので、
+    // 実サイズと目安の比から「縮めたあと」をざっくり見積もる
+    const after = Math.min(ph.bytes, ph.count * imgPreset().approx);
+    if (!confirm(`保存ずみの写真 ${ph.count}枚（${fmtBytes(ph.bytes)}）を「${imgPreset().label}」まで縮めます。\n`
+      + `だいたい ${fmtBytes(after)} くらいになる見込みです。\n`
+      + `元の画質には戻せません。よろしいですか？`)) return;
     btn.disabled = true;
     const r = await shrinkAllPhotos((i, n) => { btn.textContent = `${i}/${n}…`; });
     btn.disabled = false; btn.textContent = label;
