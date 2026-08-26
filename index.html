@@ -343,6 +343,22 @@ nav.tabs .badge[hidden]{display:none}
 .spark-x{display:flex;gap:3px;margin-top:5px}
 .spark-x span{flex:1;text-align:center;font-size:9.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 
+/* 印刷するものを選ぶ */
+.pk{display:grid;grid-template-columns:repeat(auto-fill,minmax(66px,1fr));gap:6px;
+  max-height:32vh;overflow-y:auto;margin-top:10px;-webkit-overflow-scrolling:touch}
+.pk button{position:relative;aspect-ratio:4/3;border-radius:9px;overflow:hidden;padding:0;
+  border:2px solid transparent;background:var(--surface-2);cursor:pointer;
+  opacity:.4;filter:grayscale(1)}
+.pk button::after{content:"";position:absolute;inset:0;background:var(--surface);opacity:.35}
+.pk button img{width:100%;height:100%;object-fit:cover;display:block}
+.pk button .tx{padding:4px;font-size:9px;color:var(--ink-2);line-height:1.3;
+  overflow:hidden;height:100%;text-align:left}
+.pk button[aria-pressed="true"]{border-color:var(--accent);opacity:1;filter:none}
+.pk button[aria-pressed="true"]::after{display:none}
+.pk button .ck{position:absolute;right:3px;top:3px;width:16px;height:16px;border-radius:50%;
+  background:rgba(0,0,0,.45);color:#fff;font-size:10px;display:grid;place-items:center;font-weight:700}
+.pk button[aria-pressed="true"] .ck{background:var(--accent)}
+
 /* ページから複数問 */
 .mu-stage{background:#111;border-radius:12px;overflow:hidden;
   display:grid;place-items:center;touch-action:manipulation;user-select:none}
@@ -529,25 +545,25 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
   body > #print-root{display:block !important}
   html,body{background:#fff !important;color:#000 !important;margin:0;padding:0}
   @page{size:A4;margin:12mm}
-  .pr-head{border-bottom:1.5px solid #000;padding-bottom:6px;margin-bottom:10px}
-  .pr-head h1{font-size:15pt;margin:0}
-  .pr-head .m{font-size:9pt;color:#444;margin-top:3px}
-  .pr-grid{display:grid;gap:8mm}
-  .pr-grid.per1{grid-template-columns:1fr}
-  .pr-grid.per2{grid-template-columns:1fr}
-  .pr-grid.per4{grid-template-columns:1fr 1fr}
-  .pr-item{break-inside:avoid;page-break-inside:avoid;border:1px solid #999;border-radius:2mm;padding:4mm}
-  .pr-item .n{font-size:10pt;font-weight:700;border-bottom:1px solid #ccc;padding-bottom:2mm;margin-bottom:3mm}
-  .pr-item .n span{font-weight:400;color:#444;margin-left:6px;font-size:9pt}
-  .pr-item img{display:block;width:auto;max-width:100%;height:auto;max-height:var(--prh);margin:0 auto}
-  .pr-item .memo{font-size:9.5pt;line-height:1.7;margin-top:3mm;white-space:pre-wrap}
+  /* 問題の写真だけを並べる。教科・参考書・日付などは刷らない。
+     モノクロのコピー機で読めるよう、線はすべて黒（グレーは飛ぶ）。 */
+  /* 「1ページにN問」と決め打ちせず、入るだけ詰める。
+     grid だとページまたぎの分割がブラウザによって崩れるので、
+     行送りが確実な inline-block で並べている。 */
+  .pr-flow{font-size:0;margin:0 -1.5mm}
+  .pr-item{display:inline-block;vertical-align:top;
+    width:calc(var(--prw) - 3mm);margin:0 1.5mm 3mm;
+    break-inside:avoid;page-break-inside:avoid;
+    border:0.4mm solid #000;border-radius:1.5mm;padding:2mm 2.5mm 2.5mm}
+  .pr-item .n{font-size:9pt;font-weight:700;color:#000;line-height:1;margin-bottom:2mm}
+  .pr-item img,.pr-item canvas{display:block;width:auto;max-width:100%;height:auto;
+    max-height:var(--prh);margin:0 auto}
+  .pr-item .memo{font-size:9pt;line-height:1.6;white-space:pre-wrap;color:#000}
   /* 書き込み欄。罫線は本物の枠線で引く
      （背景で描くと、ブラウザの「背景を印刷しない」設定で消えてしまう） */
-  .pr-item .blank{margin-top:3mm}
-  .pr-item .blank u{display:block;height:7.5mm;border-bottom:1px solid #ccc;text-decoration:none}
-  .pr-item .none{font-size:9.5pt;color:#666;margin-top:3mm}
+  .pr-item .blank{margin-top:2.5mm}
+  .pr-item .blank u{display:block;height:7.5mm;border-bottom:0.25mm solid #000;text-decoration:none}
   .pr-break{break-before:page;page-break-before:always}
-  .pr-foot{margin-top:6mm;font-size:8pt;color:#666;text-align:center}
 }
 </style>
 </head>
@@ -901,35 +917,57 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
   <div class="scrim" data-close></div>
   <div class="sheet">
     <div class="handle"></div>
-    <h3>印刷する</h3>
-    <p class="sub" id="print-count">—</p>
+    <div class="row-between"><h3 style="margin:0">印刷する</h3><span class="muted" id="print-count">—</span></div>
+    <p class="sub" style="margin:4px 0 0">問題の写真だけを刷ります。教科や参考書は入りません。</p>
 
     <div class="card" style="margin-top:12px">
-      <b style="font-size:14px">中身</b>
-      <div class="seg" id="seg-pr-what" style="margin-top:10px">
-        <button data-v="q" aria-pressed="true">問題だけ</button>
-        <button data-v="qa" aria-pressed="false">問題＋解答</button>
+      <div class="row-between">
+        <b style="font-size:14px">印刷するものを選ぶ</b>
+        <span class="muted" id="pr-scope">—</span>
       </div>
-      <p class="muted" style="margin:6px 0 0" id="pr-what-note">—</p>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn ghost" id="pr-all">ぜんぶ</button>
+        <button class="btn ghost" id="pr-none">ぜんぶ外す</button>
+        <button class="btn ghost" id="pr-active">復習中だけ</button>
+      </div>
+      <div class="pk" id="pr-pick"></div>
+      <p class="muted" style="margin:8px 0 0">写真をタップで入れる／外す。</p>
     </div>
 
     <div class="card">
-      <b style="font-size:14px">1ページに何問</b>
-      <div class="seg" id="seg-pr-per" style="margin-top:10px">
-        <button data-v="1" aria-pressed="false">1問</button>
-        <button data-v="2" aria-pressed="true">2問</button>
-        <button data-v="4" aria-pressed="false">4問</button>
+      <b style="font-size:14px">並べ方</b>
+      <div class="seg" id="seg-pr-cols" style="margin-top:10px">
+        <button data-v="1" aria-pressed="false">1列</button>
+        <button data-v="2" aria-pressed="true">2列</button>
+        <button data-v="3" aria-pressed="false">3列</button>
+        <button data-v="4" aria-pressed="false">4列</button>
       </div>
-      <p class="muted" style="margin:6px 0 0">問題の写真が大きく出るほど、1ページに入る数は減ります。</p>
+      <p class="muted" style="margin:6px 0 0" id="pr-cols-note">—</p>
+      <div class="row-between" style="margin-top:12px">
+        <b style="font-size:13.5px">写真の大きさの上限</b>
+        <span class="muted" id="pr-cap-val">—</span>
+      </div>
+      <input type="range" id="pr-cap" min="20" max="120" step="5" value="55" style="width:100%;margin-top:6px">
+      <p class="muted" style="margin:6px 0 0">小さくするほど1枚にたくさん入ります。<b>入るだけ詰めて刷ります。</b></p>
     </div>
 
     <div class="card">
+      <b style="font-size:14px">白黒のはっきりさ</b>
+      <div class="seg" id="seg-pr-mono" style="margin-top:10px">
+        <button data-v="bw" aria-pressed="true">くっきり白黒</button>
+        <button data-v="gray" aria-pressed="false">グレー</button>
+        <button data-v="raw" aria-pressed="false">そのまま</button>
+      </div>
+      <p class="muted" style="margin:6px 0 0" id="pr-mono-note">—</p>
+    </div>
+
+    <div class="card" id="pr-blank-card">
       <b style="font-size:14px">書き込み欄</b>
       <div class="seg" id="seg-pr-blank" style="margin-top:10px">
-        <button data-v="0" aria-pressed="false">なし</button>
-        <button data-v="1" aria-pressed="true">つける</button>
+        <button data-v="0" aria-pressed="true">なし</button>
+        <button data-v="1" aria-pressed="false">つける</button>
       </div>
-      <p class="muted" style="margin:6px 0 0">問題の下に、解き直し用の罫線を入れます。</p>
+      <p class="muted" style="margin:6px 0 0">問題の下に解き直し用の罫線を入れます。1列のときだけ使えます。</p>
     </div>
 
     <button class="btn primary wide" id="pr-go" style="margin-top:14px">印刷ページを作る</button>
@@ -1063,7 +1101,7 @@ const DB = (() => {
 
 /* 動いている版。sw.js の CACHE と必ずそろえる。
    「直したはずなのに直っていない」が古いキャッシュのせいか切り分けるために出す */
-const APP_VER = "v13";
+const APP_VER = "v14";
 
 /* ---------- 状態 ---------- */
 const state = {
@@ -3010,129 +3048,229 @@ function bookCram(name){
 /* =========================================================
    印刷（紙に出して解き直す）
 
-   画面の一覧に出ているものを、そのまま A4 に並べる。
-   解答は必ず別ページにまとめるので、そのまま小テストになる。
-   ========================================================= */
-const printOpt = { what: "q", per: 2, blank: 1 };
-/* 1ページあたりの問題数ごとに、写真の高さと書き込み欄の高さを決める */
-const PRINT_SIZE = {
-  1: { img: "148mm", lines: 8 },
-  2: { img: "70mm",  lines: 4 },
-  4: { img: "46mm",  lines: 2 },
-};
+   刷るのは「問題の写真」だけ。教科・参考書・ページ番号・日付は入れない。
+   紙の上では通し番号さえあれば足り、余白は1問でも多く載せるために使う。
 
-function printScopeLabel(){
-  const parts = [];
-  if (state.filter.book) parts.push("📕 " + state.filter.book);
-  if (state.filter.subject) parts.push(state.filter.subject);
-  if (state.filter.status === "active")   parts.push("復習中");
-  if (state.filter.status === "mastered") parts.push("定着ずみ");
-  return parts.length ? parts.join(" ・ ") : "ぜんぶ";
-}
+   モノクロのコピー機で読めることを最優先にしている。
+     ・写真は白黒に変換してから並べる（後述の toMono）
+     ・枠線・罫線はすべて黒。うすいグレーは印刷で飛ぶ
+   ========================================================= */
+const printOpt = { cols: 2, cap: 55, mono: "bw", blank: 0 };
+const printSel = new Set();        // 印刷するノートのid
+
 function openPrint(){
   const list = filteredNotes();
   if (!list.length){ toast("印刷できるミスがありません"); return; }
-  $("#print-count").textContent = `${printScopeLabel()}　${list.length}問`;
+  printSel.clear();
+  list.forEach(n => printSel.add(n.id));      // はじめはぜんぶ選んでおく
   syncPrintSegs();
+  renderPrintPick(list);
   $("#modal-print").classList.add("open");
 }
+
+function printTargets(){
+  return filteredNotes().filter(n => printSel.has(n.id));
+}
 function syncPrintSegs(){
-  $$("#seg-pr-what button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === printOpt.what)));
-  $$("#seg-pr-per  button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === printOpt.per)));
+  $$("#seg-pr-cols  button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === printOpt.cols)));
+  $$("#seg-pr-mono  button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === printOpt.mono)));
   $$("#seg-pr-blank button").forEach(b => b.setAttribute("aria-pressed", String(+b.dataset.v === printOpt.blank)));
-  $("#pr-what-note").textContent = printOpt.what === "qa"
-    ? "解答は最後にまとめて刷ります。問題と同じ番号がふってあるので、そのまま答え合わせできます。"
-    : "問題だけ。答えは手元のアプリで確認します。";
+
+  $("#pr-cap").value = printOpt.cap;
+  $("#pr-cap-val").textContent = printOpt.cap + "mm";
+  $("#pr-cols-note").textContent =
+    `横に${printOpt.cols}問ずつ並べ、1枚に入るだけ詰めます。${printCapacity()}`;
+
+  // 詰めこむときは罫線を引く場所が無い
+  const canBlank = printOpt.cols === 1;
+  $("#pr-blank-card").style.display = canBlank ? "" : "none";
+  if (!canBlank) printOpt.blank = 0;
+
+  $("#pr-mono-note").textContent = ({
+    bw:   "既定。写真を白と黒だけに変換します。影やページの日焼けが消えて、コピー機でいちばん読みやすくなります。",
+    gray: "白黒だが濃淡を残します。図やグラフに向いています。",
+    raw:  "変換しません。カラー印刷するときだけ。",
+  })[printOpt.mono];
+
+  const n = printSel.size;
+  $("#print-count").textContent = `${n}問`;
+  $("#pr-scope").textContent = `${n} / ${filteredNotes().length}問`;
+  $("#pr-go").disabled = !n;
+  $("#pr-go").textContent = n ? `${n}問を刷る` : "選ばれていません";
 }
 
-/* 問題1つぶんの枠 */
-function printItem(no, n, url, size, blank){
-  const where = [n.book ? "📕 " + n.book : "", n.page, n.unit].filter(Boolean).join(" ");
-  const body = url
-    ? `<img src="${url}" alt="">`
-    : `<div class="memo">${esc(n.memo || "（写真もメモもありません）")}</div>`;
-  return `
-    <div class="pr-item" style="--prh:${size.img}">
-      <div class="n">${no}. <span>${esc(n.subject)}${where ? " ／ " + esc(where) : ""}</span></div>
-      ${body}
-      ${url && n.memo ? `<div class="memo">${esc(n.memo)}</div>` : ""}
-      ${blank ? `<div class="blank">${"<u></u>".repeat(size.lines)}</div>` : ""}
-    </div>`;
+/* だいたい何問入るかの目安。A4（余白12mm）の刷れる範囲は 186×273mm。
+   写真は列の幅で頭打ちになることが多いので、切り抜いた問題のよくある形（横:縦 ≒ 2.6:1）
+   から高さを出し、番号・枠・すき間ぶん（14mm）を足して1行の高さとする。
+   実測（2列・上限35mm）で1枚10問のところ、この式でも10問になる。 */
+function printCapacity(){
+  const PW = 186, PH = 273;
+  const colW = PW / printOpt.cols - 3;
+  const imgH = Math.min(printOpt.cap, colW / 2.6);
+  const rowH = imgH + 14 + (printOpt.blank ? 24 : 0);
+  const rows = Math.max(1, Math.floor(PH / rowH));
+  return `1枚におよそ ${rows * printOpt.cols}問。`;
 }
-/* 解答1つぶんの枠 */
-function printAnswer(no, n, url, size){
-  const body = url
-    ? `<img src="${url}" alt="">`
-    : n.memo
-      ? `<div class="memo">${esc(n.memo)}</div>`
-      : `<div class="none">解答の写真は登録されていません。</div>`;
-  return `
-    <div class="pr-item" style="--prh:${size.img}">
-      <div class="n">${no}. <span>${esc(n.subject)}</span></div>
-      ${body}
-      ${url && n.memo ? `<div class="memo">${esc(n.memo)}</div>` : ""}
-    </div>`;
-}
-/* per問ずつに切って、かたまりごとに改ページする（CSSだけだと数が揃わない） */
-function printPages(items, per){
-  const out = [];
-  for (let i = 0; i < items.length; i += per){
-    const first = i === 0;
-    out.push(`<div class="pr-grid per${per}"${first ? "" : ` style="break-before:page;page-break-before:always"`}>`
-      + items.slice(i, i + per).join("") + `</div>`);
+
+async function renderPrintPick(list){
+  const box = $("#pr-pick");
+  box.innerHTML = list.map((n, i) => `
+    <button type="button" data-pk="${n.id}" aria-pressed="${printSel.has(n.id)}">
+      ${n.qImg ? `<span class="ph" data-img="${n.qImg}"></span>` : `<span class="tx">${esc((n.memo || "写真なし").slice(0, 40))}</span>`}
+      <span class="ck">${i + 1}</span>
+    </button>`).join("");
+  box.querySelectorAll("[data-pk]").forEach(b => b.onclick = () => {
+    const id = b.dataset.pk;
+    printSel.has(id) ? printSel.delete(id) : printSel.add(id);
+    b.setAttribute("aria-pressed", String(printSel.has(id)));
+    syncPrintSegs();
+  });
+  for (const el of box.querySelectorAll(".ph[data-img]")){
+    const u = await imgURL(el.dataset.img);
+    if (u) el.outerHTML = `<img src="${u}" alt="">`;
   }
-  return out.join("");
 }
 
-async function buildPrint(list){
-  const per = printOpt.per;
-  const size = PRINT_SIZE[per];
-  const withA = printOpt.what === "qa";
-  const stamp = new Date().toLocaleDateString("ja-JP");
+/* ---------- 白黒に変換する ----------
+   紙を写真に撮ると、影・紙の色・照明のムラがそのまま入る。
+   これをコピー機に通すと、薄い字が消えたり全体が灰色になったりする。
 
-  const qs = [];
-  for (let i = 0; i < list.length; i++){
-    const n = list[i];
-    let u = await imgURL(n.qImg);
-    if (!u && n.ref) u = await refURL(n);
-    qs.push(printItem(i + 1, n, u, size, !!printOpt.blank));
+   そこで「まわりと比べて暗いか」で白黒を決める（Sauvola法）。
+   ページ全体で1つのしきい値を決めるやり方だと、影のある側が真っ黒になる。
+   足し算の表（積分画像）を先に作るので、窓を広くしても速さは変わらない。 */
+function toMono(src, mode, maxW = 1200){
+  const k = Math.min(1, maxW / src.width);
+  const w = Math.max(1, Math.round(src.width * k));
+  const h = Math.max(1, Math.round(src.height * k));
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const cx = c.getContext("2d", { willReadFrequently: true });
+  cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h);
+  cx.drawImage(src, 0, 0, w, h);
+  if (mode === "raw") return c;
+
+  const im = cx.getImageData(0, 0, w, h);
+  const d = im.data;
+  const g = new Float64Array(w * h);
+  for (let i = 0, p = 0; i < d.length; i += 4, p++){
+    g[p] = (d[i] * 299 + d[i + 1] * 587 + d[i + 2] * 114) / 1000;
   }
 
-  let html = `
-    <div class="pr-head">
-      <h1>ミスノート — ${esc(printScopeLabel())}</h1>
-      <div class="m">${list.length}問 ・ ${esc(stamp)}${withA ? " ・ 解答は最後のページから" : ""}</div>
-    </div>
-    ${printPages(qs, per)}`;
-
-  if (withA){
-    const as = [];
-    for (let i = 0; i < list.length; i++){
-      as.push(printAnswer(i + 1, list[i], await imgURL(list[i].aImg), size));
+  if (mode === "gray"){
+    // 明るいほうの端と暗いほうの端を見つけて、白～黒いっぱいに引き伸ばす
+    const hist = new Uint32Array(256);
+    for (let p = 0; p < g.length; p++) hist[g[p] | 0]++;
+    const lo = percentile(hist, g.length, 0.04);
+    const hi = percentile(hist, g.length, 0.96);
+    const span = Math.max(24, hi - lo);
+    for (let i = 0, p = 0; i < d.length; i += 4, p++){
+      let v = (g[p] - lo) / span;
+      v = Math.max(0, Math.min(1, v));
+      v = Math.pow(v, 1.25) * 255;              // 中間をやや白へ寄せて、字を締める
+      d[i] = d[i + 1] = d[i + 2] = v;
     }
-    html += `
-      <div class="pr-head pr-break" style="margin-top:0">
-        <h1>解答 — ${esc(printScopeLabel())}</h1>
-        <div class="m">問題と同じ番号です</div>
-      </div>
-      ${printPages(as, per)}`;
+    cx.putImageData(im, 0, 0);
+    return c;
   }
-  html += `<div class="pr-foot">ミスノート ${APP_VER}</div>`;
-  return html;
+
+  // ---- くっきり白黒（Sauvola）----
+  const s1 = new Float64Array((w + 1) * (h + 1));   // 明るさの合計
+  const s2 = new Float64Array((w + 1) * (h + 1));   // 明るさの2乗の合計
+  for (let y = 0; y < h; y++){
+    let r1 = 0, r2 = 0;
+    for (let x = 0; x < w; x++){
+      const v = g[y * w + x];
+      r1 += v; r2 += v * v;
+      s1[(y + 1) * (w + 1) + x + 1] = s1[y * (w + 1) + x + 1] + r1;
+      s2[(y + 1) * (w + 1) + x + 1] = s2[y * (w + 1) + x + 1] + r2;
+    }
+  }
+  const rad = Math.max(8, Math.round(Math.min(w, h) / 22));
+  const K = 0.22, R = 128;
+  for (let y = 0; y < h; y++){
+    const y0 = Math.max(0, y - rad), y1 = Math.min(h - 1, y + rad);
+    for (let x = 0; x < w; x++){
+      const x0 = Math.max(0, x - rad), x1 = Math.min(w - 1, x + rad);
+      const area = (y1 - y0 + 1) * (x1 - x0 + 1);
+      const A = y1 + 1, B = y0, L = x1 + 1, S = x0;
+      const sum  = s1[A * (w + 1) + L] - s1[B * (w + 1) + L] - s1[A * (w + 1) + S] + s1[B * (w + 1) + S];
+      const sqs  = s2[A * (w + 1) + L] - s2[B * (w + 1) + L] - s2[A * (w + 1) + S] + s2[B * (w + 1) + S];
+      const mean = sum / area;
+      const sd   = Math.sqrt(Math.max(0, sqs / area - mean * mean));
+      // まわりに濃淡が無い（＝白紙）ところはしきい値が下がるので、黒く塗りつぶされない
+      const th = mean * (1 + K * (sd / R - 1));
+      const v = g[y * w + x] < th ? 0 : 255;
+      const i = (y * w + x) * 4;
+      d[i] = d[i + 1] = d[i + 2] = v;
+    }
+  }
+  cx.putImageData(im, 0, 0);
+  return c;
+}
+function percentile(hist, total, p){
+  let acc = 0, want = total * p;
+  for (let v = 0; v < 256; v++){ acc += hist[v]; if (acc >= want) return v; }
+  return 255;
+}
+
+async function buildPrint(list, onProgress){
+  const flow = document.createElement("div");
+  flow.className = "pr-flow";
+  flow.style.setProperty("--prw", (100 / printOpt.cols) + "%");
+
+  for (let i = 0; i < list.length; i++){
+    onProgress?.(i + 1, list.length);
+    const n = list[i];
+    const item = document.createElement("div");
+    item.className = "pr-item";
+    item.style.setProperty("--prh", printOpt.cap + "mm");
+
+    const no = document.createElement("div");
+    no.className = "n";
+    no.textContent = `${i + 1}.`;
+    item.appendChild(no);
+
+    let url = await imgURL(n.qImg);
+    if (!url && n.ref) url = await refURL(n);
+    if (url){
+      const bmp = await loadBitmap(url);
+      item.appendChild(toMono(bmp, printOpt.mono));
+    } else {
+      const memo = document.createElement("div");
+      memo.className = "memo";
+      memo.textContent = n.memo || "（写真なし）";
+      item.appendChild(memo);
+    }
+    if (printOpt.blank && printOpt.cols === 1){
+      const bl = document.createElement("div");
+      bl.className = "blank";
+      bl.innerHTML = "<u></u>".repeat(3);
+      item.appendChild(bl);
+    }
+    flow.appendChild(item);
+  }
+  return flow;
+}
+function loadBitmap(url){
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = rej;
+    im.src = url;
+  });
 }
 
 async function doPrint(){
-  const list = filteredNotes();
-  if (!list.length){ toast("印刷できるミスがありません"); return; }
+  const list = printTargets();
+  if (!list.length){ toast("印刷するものが選ばれていません"); return; }
   const btn = $("#pr-go");
-  btn.disabled = true; btn.textContent = "作っています…";
+  const label = btn.textContent;
+  btn.disabled = true;
   const root = $("#print-root");
   try {
-    root.innerHTML = await buildPrint(list);
-    // 写真が出そろう前に print すると白紙で刷られてしまう
-    await Promise.all([...root.querySelectorAll("img")].map(img =>
-      img.complete ? Promise.resolve() : new Promise(r => { img.onload = img.onerror = r; })
-    ));
+    root.innerHTML = "";
+    const flow = await buildPrint(list, (i, n) => { btn.textContent = `作っています… ${i}/${n}`; });
+    root.appendChild(flow);
     closeModals();
     // 印刷が終わったら中身を捨てる（写真をつかんだままにしない）
     const clear = () => { root.innerHTML = ""; window.removeEventListener("afterprint", clear); };
@@ -3143,7 +3281,7 @@ async function doPrint(){
     root.innerHTML = "";
     toast("印刷ページを作れませんでした");
   } finally {
-    btn.disabled = false; btn.textContent = "印刷ページを作る";
+    btn.disabled = false; btn.textContent = label;
   }
 }
 
@@ -3694,17 +3832,26 @@ function bindUI(){
 
   // 印刷
   $("#btn-print").onclick = openPrint;
-  $("#seg-pr-what").onclick = e => {
+  $("#seg-pr-cols").onclick = e => {
     const b = e.target.closest("button"); if (!b) return;
-    printOpt.what = b.dataset.v; syncPrintSegs();
+    printOpt.cols = +b.dataset.v; syncPrintSegs();
   };
-  $("#seg-pr-per").onclick = e => {
+  $("#pr-cap").oninput = e => { printOpt.cap = +e.target.value; syncPrintSegs(); };
+  $("#seg-pr-mono").onclick = e => {
     const b = e.target.closest("button"); if (!b) return;
-    printOpt.per = +b.dataset.v; syncPrintSegs();
+    printOpt.mono = b.dataset.v; syncPrintSegs();
   };
   $("#seg-pr-blank").onclick = e => {
     const b = e.target.closest("button"); if (!b) return;
     printOpt.blank = +b.dataset.v; syncPrintSegs();
+  };
+  const repick = () => { renderPrintPick(filteredNotes()); syncPrintSegs(); };
+  $("#pr-all").onclick  = () => { filteredNotes().forEach(n => printSel.add(n.id)); repick(); };
+  $("#pr-none").onclick = () => { printSel.clear(); repick(); };
+  $("#pr-active").onclick = () => {
+    printSel.clear();
+    filteredNotes().filter(n => !n.mastered).forEach(n => printSel.add(n.id));
+    repick();
   };
   $("#pr-go").onclick = doPrint;
   $("#stats-book").onclick = e => {
