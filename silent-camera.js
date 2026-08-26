@@ -98,6 +98,41 @@
     return 'アドレスバー左の「ぁあ」→ Webサイトの設定 →「カメラ」を「許可」にしてから、もう一度お試しください。';
   }
 
+  /* ====================== 音を止めないための宣言 ======================
+
+     iOS は「このページが音をどう使うか」で端末の音の設定を切り替える。
+     何も宣言しないと自動判定になり、カメラを起こしたときに
+     録音向け（play-and-record）や再生向け（playback）に切り替わることがある。
+     どちらも「他の音を止める」設定なので、聴いている音楽が止まる。
+
+     WebKit の中では、この自動判定より
+     ページからの指定（categoryOverride）のほうが優先される。
+     このカメラは音を1バイトも出さないので ambient＝「他の音と混ざってよい」
+     を宣言しておく。カメラを使っているあいだだけ宣言し、
+     終わったら元に戻す（組み込み先のページの音を邪魔しないため）。
+
+     Audio Session API が無い環境では何も起きない（害もない）。 */
+  function audioSession() {
+    try { return navigator.audioSession || null; } catch (e) { return null; }
+  }
+  function claimAmbient(prevBox) {
+    const s = audioSession();
+    if (!s) return false;
+    try {
+      prevBox.value = s.type;
+      if (s.type !== 'ambient') s.type = 'ambient';
+      return s.type === 'ambient';
+    } catch (e) {
+      return false;
+    }
+  }
+  function releaseAmbient(prevBox) {
+    const s = audioSession();
+    if (!s || prevBox.value == null) return;
+    try { if (s.type === 'ambient') s.type = prevBox.value; } catch (e) { /* 戻せなくても実害はない */ }
+    prevBox.value = null;
+  }
+
   function loadSettings() {
     try {
       return Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'));
@@ -434,6 +469,8 @@ input[type=range]{accent-color:var(--accent);}
       this.s = loadSettings();
       this.stream = null;
       this.track = null;
+      this._prevAudioType = { value: null };   // カメラ中だけ ambient にして、あとで戻す
+      this._ambient = false;
       this.photos = [];
       this.urls = new Map();
       this.selected = new Set();
@@ -640,6 +677,9 @@ input[type=range]{accent-color:var(--accent);}
       }
 
       this.stop();
+      // カメラを起こす前に宣言する。起こしたあとでは、
+      // すでに切り替わった設定を追いかけることになる
+      this._ambient = claimAmbient(this._prevAudioType);
       const res = RES_PRESETS[this.s.res] || RES_PRESETS.max;
 
       const attempt = async (constraints) =>
@@ -660,11 +700,24 @@ input[type=range]{accent-color:var(--accent);}
             stream = await attempt(true);
           } catch (err3) {
             const name = err3 && err3.name;
-            if (name === 'NotAllowedError')
+            // 音の宣言（ambient）がカメラの邪魔をする端末があるかもしれないので、
+            // 許可以外の理由でこけたら宣言を取り下げて一度だけやり直す。
+            // カメラが写らないより、音楽が止まるほうがまだましなので。
+            if (this._ambient && name !== 'NotAllowedError' && name !== 'NotFoundError') {
+              releaseAmbient(this._prevAudioType);
+              this._ambient = false;
+              try {
+                stream = await attempt(true);
+              } catch (err4) {
+                return this.fail('カメラを起動できませんでした', (err4 && err4.message) || '');
+              }
+            } else if (name === 'NotAllowedError') {
               return this.fail('カメラが許可されていません', permHint());
-            if (name === 'NotFoundError')
+            } else if (name === 'NotFoundError') {
               return this.fail('カメラが見つかりません', 'この端末にカメラがないようです。');
-            return this.fail('カメラを起動できませんでした', (err3 && err3.message) || '');
+            } else {
+              return this.fail('カメラを起動できませんでした', (err3 && err3.message) || '');
+            }
           }
         }
       }
@@ -710,12 +763,27 @@ input[type=range]{accent-color:var(--accent);}
         try { v.pause(); } catch (e) { /* 停止済みなら何もしなくてよい */ }
         v.srcObject = null;
       }
+      releaseAmbient(this._prevAudioType);
+      this._ambient = false;
     }
 
     /* いま映像が流れているか。組み込み先が「すでに動いていれば取り直さない」を
        判断するために使う（iOS は取り直すたびに許可を聞き直すことがある） */
     get isRunning() {
       return !!(this.track && this.track.readyState === 'live');
+    }
+
+    /* 音まわりの状態。うまくいかないときに何が起きているかを外から見るため */
+    get audioInfo() {
+      const s = audioSession();
+      return {
+        supported: !!s,
+        type: s ? s.type : null,
+        state: s ? s.state : null,
+        claimed: !!this._ambient,
+        audioTracks: this.stream ? this.stream.getAudioTracks().length : 0,
+        videoMuted: this.el ? this.el.video.muted : null,
+      };
     }
 
     async flip() {

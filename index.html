@@ -1105,7 +1105,7 @@ const DB = (() => {
 
 /* 動いている版。sw.js の CACHE と必ずそろえる。
    「直したはずなのに直っていない」が古いキャッシュのせいか切り分けるために出す */
-const APP_VER = "v16";
+const APP_VER = "v17";
 
 /* ---------- 状態 ---------- */
 const state = {
@@ -2378,23 +2378,19 @@ function camHelpHTML(){
     </ol>
     <p class="why">これで次からは聞かれません。ついでに
       <b>共有ボタン →「ホーム画面に追加」</b>をしておくと、写真の消えにくさも上がります。</p>
-    <p class="why">音楽が止まってしまうときは、⚙設定 →「カメラの持ちかた」を
-      <b>「すぐ手放す」</b>にすると戻りやすくなります。</p>`;
+    ${musicHelpHTML()}`;
   if (camEnv() === "ios-other") return `
-    <b>Safari に移すと、どちらも直ります</b>
-    <p style="margin:6px 0 0">iPad の Chrome・Edge などは中身が Safari（WebKit）です。
-      そのため <b>サイトごとの「許可」を残せません</b>。また、カメラを起こすときに
-      端末の音の権利をつかむ作りのため、<b>再生中の音楽が止まります</b>。
-      どちらもアプリ側からは直せません。</p>
+    <b>許可を毎回聞かれるのは Safari に移すと直ります</b>
+    <p style="margin:6px 0 0">iPad の Chrome・Edge などは中身が Safari（WebKit）で、
+      <b>サイトごとの「許可」を残せません</b>。</p>
     <ol>
       <li>Safari で <b>shu291.github.io/miss-note/</b> を開く</li>
       <li>アドレスバー左の <b>「ぁあ」</b> → <b>Webサイトの設定</b> → <b>カメラ</b> →「許可」</li>
       <li><b>共有ボタン →「ホーム画面に追加」</b>でアプリとして使う</li>
     </ol>
-    <p class="why">このまま使う場合は、⚙設定 →「カメラの持ちかた」を
-      <b>「すぐ手放す」</b>（既定）にしておくと、止まった音楽が戻りやすくなります。</p>
     <p class="why">記録は端末ごと・ブラウザごとに分かれています。乗りかえる前に、
-      いまのブラウザの ⚙設定 →「書き出す」でバックアップを取り、Safari 側で読みこんでください。</p>`;
+      いまのブラウザの ⚙設定 →「書き出す」でバックアップを取り、Safari 側で読みこんでください。</p>
+    ${musicHelpHTML()}`;
   return `
     <b>一度「許可」すれば次から聞かれません</b>
     <ol>
@@ -2402,6 +2398,46 @@ function camHelpHTML(){
       <li><b>カメラ</b> を <b>「許可する」</b> にする</li>
       <li>ページを再読み込みする</li>
     </ol>`;
+}
+
+/* ---------- 音楽が止まるときの説明と、いまの状態 ----------
+   iOS は「このページが音をどう使うか」で端末の音の設定を切り替える。
+   カメラを起こすと録音向け／再生向けに切り替わって他の音を止めることがあるので、
+   silent-camera から ambient（他と混ざってよい）を宣言している。
+   宣言できたかどうかは端末とブラウザの版で変わるので、その場で見えるようにする。 */
+function musicHelpHTML(){
+  const cam = $("#cam");
+  const a = (cam && cam.audioInfo) || { supported: false };
+  const ok = a.supported && (a.claimed || a.type === "ambient");
+  return `
+    <p class="why" style="border-top:1px solid var(--line);padding-top:9px;margin-top:10px">
+      <b>🎵 音楽が止まってしまうときは</b><br>
+      ${ok
+        ? `この端末では、カメラ中に<b>「他の音と混ざってよい」</b>と宣言できています。
+           それでも止まるなら、⚙設定 →「カメラの持ちかた」を<b>「持っておく」</b>にしてみてください。
+           止まる回数が1問につき1回で済みます。`
+        : a.supported
+          ? `この端末では宣言が効きませんでした（いまの設定：${esc(String(a.type))}）。
+             ⚙設定 →「カメラの持ちかた」で、止まる回数と止まる長さのどちらを取るか選べます。`
+          : `この端末のブラウザは、まだ<b>音の使い方を宣言する仕組み</b>に対応していません。
+             <b>iPadOS を最新にすると直ることがあります。</b>
+             それまでは、⚙設定 →「カメラの持ちかた」で調整してください。`}
+      <br><b>回数を減らす一番の近道：</b>追加画面の
+      <b>「📄 ページ全体を撮って、まとめて登録」</b>を使うと、
+      何問撮っても<b>カメラを起こすのは1回だけ</b>です。
+    </p>
+    <details class="why" style="margin-top:8px">
+      <summary>いまの状態（うまくいかないとき、この中身を伝えてください）</summary>
+      <div style="font-size:11px;line-height:1.7;margin-top:6px;word-break:break-all">
+        宣言の仕組み：${a.supported ? "あり" : "なし"}／
+        いまの種類：${esc(String(a.type))}／
+        状態：${esc(String(a.state))}／
+        宣言できた：${a.claimed ? "はい" : "いいえ"}<br>
+        音声トラック：${a.audioTracks ?? "—"}本／プレビュー無音：${a.videoMuted === true ? "はい" : String(a.videoMuted)}<br>
+        カメラの持ちかた：${state.prefs.camHold === "keep" ? "持っておく" : "すぐ手放す"}<br>
+        ${esc(navigator.userAgent)}
+      </div>
+    </details>`;
 }
 
 /* =========================================================
