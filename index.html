@@ -675,20 +675,20 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
       </div>
       <div class="chips" id="filter-subject" style="margin-top:10px"></div>
       <div class="btn-row" style="margin-top:10px">
-        <button class="btn ghost" id="btn-select">☑ 印刷するものを選ぶ</button>
-        <button class="btn ghost" id="btn-print">🖨 印刷</button>
+        <button class="btn ghost wide" id="btn-print">🖨 選択したものを印刷</button>
       </div>
       <div class="selbar" id="selbar" hidden>
         <div class="row-between">
           <b id="sel-count">0問を選択中</b>
-          <button class="linkbtn" id="sel-done">やめる</button>
+          <button class="linkbtn" id="sel-cancel">やめる</button>
         </div>
-        <div class="btn-row" style="margin-top:8px">
+        <p class="muted" style="margin:4px 0 0">写真をタップで入れる／外す。絞りこみを変えても選んだぶんは残るので、<b>何冊かにまたいで1枚にまとめられます。</b></p>
+        <div class="btn-row" style="margin-top:10px">
           <button class="btn ghost" id="sel-all">見えているぶん全部</button>
           <button class="btn ghost" id="sel-active">復習中だけ</button>
           <button class="btn ghost" id="sel-none">解除</button>
         </div>
-        <p class="muted" style="margin:8px 0 0">絞りこみを変えても選んだぶんは残ります。<b>何冊かにまたいで1枚にまとめられます。</b></p>
+        <button class="btn primary wide" id="sel-done" style="margin-top:10px">完了</button>
       </div>
       <div id="list-body"></div>
     </section>
@@ -1105,7 +1105,7 @@ const DB = (() => {
 
 /* 動いている版。sw.js の CACHE と必ずそろえる。
    「直したはずなのに直っていない」が古いキャッシュのせいか切り分けるために出す */
-const APP_VER = "v15";
+const APP_VER = "v16";
 
 /* ---------- 状態 ---------- */
 const state = {
@@ -3028,18 +3028,22 @@ function renderList(){
   renderSelBar();
 }
 
-/* 一覧で「印刷するものを選ぶ」状態の見た目 */
+/* 一覧で「印刷するものを選ぶ」状態の見た目。
+   選ぶ → 完了 → 並べ方の画面、という1本道にしてある。 */
 function renderSelBar(){
   const on = state.selMode;
+  const n = printSel.size;
   $("#selbar").hidden = !on;
-  $("#btn-select").textContent = on ? "☑ 選ぶのをやめる" : "☑ 印刷するものを選ぶ";
-  $("#sel-count").textContent = `${printSel.size}問を選択中`;
-  $("#btn-print").textContent = printSel.size ? `🖨 ${printSel.size}問を印刷` : "🖨 印刷";
+  $("#btn-print").style.display = on ? "none" : "";
+  $("#sel-count").textContent = n ? `${n}問を選択中` : "印刷するものを選んでください";
+  $("#sel-done").disabled = !n;
+  $("#sel-done").textContent = n ? `完了（${n}問）→ 並べ方へ` : "完了";
 }
 function setSelMode(on){
   state.selMode = on;
   if (!on) printSel.clear();
   renderList();
+  if (on) $("#selbar").scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 /* ---------- 参考書ごとの復習ノート ---------- */
@@ -3088,19 +3092,14 @@ const printOpt = { cols: 2, cap: 55, mono: "bw", blank: 0 };
 const printSel = new Set();        // 印刷するノートのid
 
 function openPrint(){
-  if (!printTargets().length){
-    toast(printSel.size ? "選んだ問題が見つかりません" : "印刷できるミスがありません");
-    return;
-  }
+  if (!printTargets().length){ toast("印刷するものが選ばれていません"); return; }
   syncPrintSegs();
   $("#modal-print").classList.add("open");
 }
 
-/* 印刷するもの。一覧で選んでいればそれ、選んでいなければ一覧に出ているぶん全部。
-   選んだぶんは絞りこみをまたいで残るので、参考書を切り替えながら
-   1枚ぶんを集める使い方ができる。並びは 参考書 → ページ → 登録順。 */
+/* 一覧で選んだもの。絞りこみをまたいで残るので、参考書を切り替えながら
+   1枚ぶんを集める使い方ができる。並びは 参考書 → ページ → 問題番号 → 登録順。 */
 function printTargets(){
-  if (!printSel.size) return filteredNotes();
   return state.notes
     .filter(n => printSel.has(n.id))
     .sort((a, b) =>
@@ -3135,9 +3134,8 @@ function syncPrintSegs(){
   const books = [...new Set(list.map(x => x.book).filter(Boolean))];
   $("#print-count").textContent = `${n}問`;
   $("#pr-scope").textContent = `${n}問`;
-  $("#pr-scope-note").textContent = printSel.size
-    ? `一覧で選んだ ${n}問。${books.length > 1 ? books.length + "冊にまたがっています。" : ""}`
-    : "一覧に出ているぶん全部。1問ずつ選ぶなら「印刷するものを選ぶ」から。";
+  $("#pr-scope-note").textContent =
+    `一覧で選んだ ${n}問。${books.length > 1 ? books.length + "冊にまたがっています。" : ""}`;
   $("#pr-go").disabled = !n;
   $("#pr-go").textContent = n ? `${n}問を刷る` : "選ばれていません";
 }
@@ -3855,7 +3853,6 @@ function bindUI(){
   };
 
   // 印刷
-  $("#btn-print").onclick = openPrint;
   $("#seg-pr-cols").onclick = e => {
     const b = e.target.closest("button"); if (!b) return;
     printOpt.cols = +b.dataset.v; syncPrintSegs();
@@ -3872,9 +3869,10 @@ function bindUI(){
   $("#pr-repick").onclick = () => { closeModals(); setSelMode(true); };
   $("#pr-go").onclick = doPrint;
 
-  // 一覧で1問ずつ選ぶ
-  $("#btn-select").onclick = () => setSelMode(!state.selMode);
-  $("#sel-done").onclick   = () => setSelMode(false);
+  // 一覧で1問ずつ選ぶ → 完了 → 並べ方の画面
+  $("#btn-print").onclick  = () => setSelMode(true);
+  $("#sel-cancel").onclick = () => setSelMode(false);
+  $("#sel-done").onclick   = openPrint;
   $("#sel-all").onclick    = () => { filteredNotes().forEach(n => printSel.add(n.id)); renderList(); };
   $("#sel-active").onclick = () => { filteredNotes().filter(n => !n.mastered).forEach(n => printSel.add(n.id)); renderList(); };
   $("#sel-none").onclick   = () => { printSel.clear(); renderList(); };
