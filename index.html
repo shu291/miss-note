@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>ミスノート — 間違えた問題が自動で戻ってくる</title>
-<meta name="description" content="間違えた問題を撮るだけ。復習日が自動で決まり、今日やるぶんだけ出てくる間違いノート。">
+<meta name="description" content="間違えた問題の写真を入れるだけ。復習日が自動で決まり、今日やるぶんだけ出てくる間違いノート。">
 <meta name="theme-color" content="#d03b3b">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -583,19 +583,21 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
     <!-- ============ 追加（起動時にここを開く） ============ -->
     <section class="view active" id="view-add" aria-label="ミスを追加">
       <h2 class="title">ミスを追加</h2>
-      <p class="sub">写真を撮るだけでOK。復習日は自動で決まります。</p>
+      <p class="sub">写真を入れるだけでOK。復習日は自動で決まります。</p>
 
       <div class="card">
         <div class="shots">
           <div class="shot" id="shot-q" role="button" tabindex="0" aria-label="問題の写真を追加">
-            <div class="ph"><b>＋</b>問題を撮る<br><span style="font-size:10.5px">（必須ではない）</span></div>
+            <div class="ph"><b>＋</b>問題の写真<br><span style="font-size:10.5px">（必須ではない）</span></div>
           </div>
           <div class="shot" id="shot-a" role="button" tabindex="0" aria-label="解答・解説の写真を追加">
             <div class="ph"><b>＋</b>解答・解説<br><span style="font-size:10.5px">（任意）</span></div>
           </div>
         </div>
         <input type="file" accept="image/*" id="file-input" class="visually-hidden">
-        <button class="btn ghost wide" id="btn-multi" style="margin-top:10px">📄 ページ全体を撮って、まとめて登録</button>
+        <p class="muted" id="shot-hint" style="margin:8px 0 0">—</p>
+        <button class="btn ghost wide" id="btn-othersrc" style="margin-top:8px">—</button>
+        <button class="btn ghost wide" id="btn-multi" style="margin-top:8px">📄 ページ全体からまとめて登録</button>
 
         <label class="field">
           <span>参考書 <span class="opt">（選ぶと教科も自動で入ります）</span></span>
@@ -745,7 +747,7 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
   <div class="sheet">
     <div class="handle"></div>
     <h3 id="book-title">参考書を登録</h3>
-    <p class="muted" style="margin:0 0 4px" id="book-lead">よく使う問題集を登録しておくと、ワンタップで撮影に入れます。</p>
+    <p class="muted" style="margin:0 0 4px" id="book-lead">よく使う問題集を登録しておくと、ワンタップで写真の登録に入れます。</p>
     <label class="field">
       <span>参考書の名前</span>
       <input type="text" id="in-book-name" placeholder="例：青チャート数学ⅠA / 重要問題集 物理" autocomplete="off" maxlength="40">
@@ -795,7 +797,7 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
 
     <div class="card">
       <div class="row-between"><b style="font-size:14px">参考書</b><span class="muted" id="book-count">—</span></div>
-      <p class="muted" style="margin:6px 0 0">登録しておくと、追加画面と復習おわりの画面に<b>ワンタップで撮影に入れるボタン</b>が出ます。教科も自動で入ります。</p>
+      <p class="muted" style="margin:6px 0 0">登録しておくと、追加画面と復習おわりの画面に<b>ワンタップで写真に進めるボタン</b>が出ます。教科も自動で入ります。</p>
       <div id="book-manage" style="margin-top:12px"></div>
       <button class="btn ghost wide" id="btn-book-add" style="margin-top:12px">＋ 参考書を登録</button>
     </div>
@@ -837,8 +839,18 @@ silent-camera{display:block;width:100%;height:min(52vh,400px);border-radius:14px
     </div>
 
     <div class="card">
+      <b style="font-size:14px">写真の入り口</b>
+      <p class="muted" style="margin:6px 0 0">写真の枠を押したときに、どちらを先に開くか。選ばなかったほうも、追加画面のボタンから1タップで使えます。</p>
+      <div class="seg" id="seg-photosrc" style="margin-top:10px">
+        <button data-v="library" aria-pressed="true">写真から選ぶ</button>
+        <button data-v="camera" aria-pressed="false">カメラで撮る</button>
+      </div>
+      <p class="muted" style="margin:6px 0 0" id="photosrc-note">—</p>
+    </div>
+
+    <div class="card">
       <b style="font-size:14px">カメラの持ちかた</b>
-      <p class="muted" style="margin:6px 0 0">撮ったあと、カメラをすぐ手放すかどうか。<b>音楽が止まる</b>／<b>許可を毎回聞かれる</b>のどちらが気になるかで選んでください。</p>
+      <p class="muted" style="margin:6px 0 0">カメラで撮るときだけ効く設定です。撮ったあとカメラをすぐ手放すかどうか。<b>音楽が止まる</b>／<b>許可を毎回聞かれる</b>のどちらが気になるかで選んでください。</p>
       <div class="seg" id="seg-camhold" style="margin-top:10px">
         <button data-v="release" aria-pressed="true">すぐ手放す</button>
         <button data-v="keep" aria-pressed="false">持っておく</button>
@@ -1105,7 +1117,7 @@ const DB = (() => {
 
 /* 動いている版。sw.js の CACHE と必ずそろえる。
    「直したはずなのに直っていない」が古いキャッシュのせいか切り分けるために出す */
-const APP_VER = "v17";
+const APP_VER = "v18";
 
 /* ---------- 状態 ---------- */
 const state = {
@@ -1120,6 +1132,7 @@ const state = {
     storageHiddenUntil: null,
     camHintSeen: false,
     camHold: "release",  // 撮ったあとカメラをすぐ手放す。"keep" なら少しのあいだ持っておく
+    photoSrc: "library", // 写真スロットを押したときの入り口。"camera" なら無音カメラが開く
   },
   queue: [], qi: 0, retryPass: false,
   revealed: false,
@@ -1225,6 +1238,7 @@ async function refURL(note){
   applyTheme();
   buildChips();
   bindUI();
+  syncPhotoSrc();
   $("#app-ver").textContent = APP_VER;
   buildQueue();
   render();
@@ -1710,13 +1724,13 @@ async function renderReview(){
       <div class="card empty">
         <div class="big">📷</div>
         <h3>まだ1問もありません</h3>
-        <p>間違えた問題を1枚撮っておくだけで、<br>あとは自動で復習日がやってきます。</p>
+        <p>間違えた問題の写真を1枚入れておくだけで、<br>あとは自動で復習日がやってきます。</p>
         <button class="btn primary wide" style="margin-top:16px" onclick="__go('add')">最初のミスを登録する</button>
       </div>
       <div class="card" style="margin-top:12px">
         <b style="font-size:14px">使いかた</b>
         <ol style="margin:8px 0 0;padding-left:1.15em;color:var(--ink-2);font-size:13.5px;line-height:1.9">
-          <li>間違えた問題を撮る（解答も撮ると◎）</li>
+          <li>間違えた問題の写真を入れる（解答も入れると◎）</li>
           <li>教科と「なぜ間違えたか」をタップ</li>
           <li>あとは毎日この画面を開くだけ</li>
         </ol>
@@ -1957,7 +1971,7 @@ function renderPageQuick(){
       ).join("");
 }
 
-/* ---------- ショートカット（押すとすぐ撮影に入る） ---------- */
+/* ---------- ショートカット（押すとすぐ写真の入り口へ） ---------- */
 function shortcutRow(opt = {}){
   const bs = books();
   if (!bs.length){
@@ -1969,7 +1983,7 @@ function shortcutRow(opt = {}){
       </div>`;
   }
   return `
-    <p class="sc-head">ショートカット — 押すとそのまま撮影</p>
+    <p class="sc-head">ショートカット — 押すとそのまま写真へ</p>
     <div class="shortcuts">
       ${booksBySubject().map(([sub, list], i) =>
         (i ? `<span class="brk"></span>` : "")
@@ -1993,8 +2007,7 @@ function startShortcut(id){
   selectBook(id);
   state.draft.cause = null;
   go("add");
-  crop.target = "q";
-  openCamera();               // 無音カメラへ直行（音も鳴らず、音楽も止まらない）
+  pickPhoto("q");             // 設定した入り口（既定は写真から選ぶ）へ直行
 }
 
 /* ---------- 参考書の登録・編集 ---------- */
@@ -2007,7 +2020,7 @@ function openBookModal(id, fromSettings = false){
   $("#book-title").textContent = b ? "参考書を編集" : "参考書を登録";
   $("#book-lead").textContent = b
     ? `この参考書のミス ${bookCount(b.id)}問。名前を変えても登録ずみのミスはついてきます。`
-    : "よく使う問題集を登録しておくと、ワンタップで撮影に入れます。";
+    : "よく使う問題集を登録しておくと、ワンタップで写真の登録に入れます。";
   $("#in-book-name").value = b ? b.name : "";
   $("#chips-book-subject").innerHTML = SUBJECTS
     .map(s => `<button class="chip" type="button" data-v="${esc(s)}" aria-pressed="${b && b.subject === s}">${esc(s)}</button>`).join("");
@@ -2243,7 +2256,7 @@ function resetDraft(){
 }
 function paintShot(which, blob){
   const el = $("#shot-" + which);
-  const label = which === "q" ? "問題を撮る" : "解答・解説";
+  const label = which === "q" ? "問題の写真" : "解答・解説";
   const opt   = which === "q" ? "（必須ではない）" : "（任意）";
   if (!blob){
     el.classList.remove("filled");
@@ -2301,14 +2314,67 @@ function camRelease(){
   if (cam && cam.stop) cam.stop();
 }
 
-/* 写真の入り口はここ1つだけ。撮り方を選ばせず、いつでも無音カメラが開く。 */
+/* =========================================================
+   写真の入り口
+
+   スロットを押したときにどちらを開くかは prefs.photoSrc で決まる。
+     "library"（既定）… 端末の写真から選ぶ
+     "camera"         … 無音カメラを起こす
+
+   ライブラリを既定にしている理由は3つ。
+     ・カメラの許可を聞かれない（iOS はアプリを閉じると許可を忘れる）
+     ・カメラを起こさないので、聴いている音楽が止まらない
+     ・ふだん撮りためた写真から、あとでまとめて登録できる
+   カメラは押せば1タップで開くので、無音で撮りたいときはそのまま使える。
+   ========================================================= */
+function pickPhoto(which){
+  if (which) crop.target = which;
+  if (state.prefs.photoSrc === "camera") openCamera();
+  else openLibrary();
+}
+function pickPhotoOther(which){
+  if (which) crop.target = which;
+  if (state.prefs.photoSrc === "camera") openLibrary();
+  else openCamera();
+}
+
+/* 追加画面の案内と「もう一方」のボタンを、いまの入り口に合わせる */
+function syncPhotoSrc(){
+  const lib = state.prefs.photoSrc !== "camera";
+  const hint = $("#shot-hint"), btn = $("#btn-othersrc");
+  if (hint) hint.innerHTML = lib
+    ? "枠を押すと<b>端末の写真</b>から選べます。問題の枠で2枚えらぶと、1枚目＝問題／2枚目＝解答に入ります。"
+    : "枠を押すと<b>無音カメラ</b>が開きます。シャッター音は鳴りません。";
+  if (btn) btn.textContent = lib ? "📷 カメラで撮る（無音）" : "🖼 写真から選ぶ";
+}
+
+/* 端末の写真から選ぶ。タップと同じ処理の流れから呼ぶこと
+   （await をはさむと Safari が選択画面を開かない）。 */
+function openLibrary(){
+  const inp = $("#file-input");
+  // まとめて登録はページ1枚だけ。ふつうのスロットは問題＋解答を一度に選べる
+  inp.multiple = crop.target !== "multi";
+  inp.value = "";
+  inp.click();
+}
+
+/* 写真から選んだぶんを1枚ずつ切り抜きにかける待ち行列。
+   問題スロットで2枚えらぶと、1枚目＝問題／2枚目＝解答に入る。 */
+let shotQueue = [];
+function nextShot(){
+  const n = shotQueue.shift();
+  if (!n){ $("#file-input").value = ""; return; }
+  openCropper(n.file, n.target);
+}
+
+/* 撮り方を選ばせず、いつでも無音カメラが開く。 */
 function openCamera(which){
   if (which) crop.target = which;
   const cam = $("#cam");
   if (!cam || !customElements.get("silent-camera")){
     // コンポーネントが読み込めなかったときだけ、写真から選ぶ道に逃がす
     toast("カメラを読み込めませんでした");
-    $("#file-input").click();
+    openLibrary();
     return;
   }
   clearTimeout(camWarmTimer);
@@ -2422,9 +2488,13 @@ function musicHelpHTML(){
           : `この端末のブラウザは、まだ<b>音の使い方を宣言する仕組み</b>に対応していません。
              <b>iPadOS を最新にすると直ることがあります。</b>
              それまでは、⚙設定 →「カメラの持ちかた」で調整してください。`}
-      <br><b>回数を減らす一番の近道：</b>追加画面の
-      <b>「📄 ページ全体を撮って、まとめて登録」</b>を使うと、
-      何問撮っても<b>カメラを起こすのは1回だけ</b>です。
+      <br><b>いちばん確実なのは、カメラを使わないことです。</b>
+      ⚙設定 →「写真の入り口」を<b>「写真から選ぶ」</b>（既定）にしておけば、
+      カメラを起こさないので音楽は止まりません。
+      先に端末のカメラで撮っておいて、あとから選ぶだけです。
+      カメラで撮りたいときは、追加画面の
+      <b>「📄 ページ全体からまとめて登録」</b>を使うと、
+      何問ぶんでも<b>カメラを起こすのは1回だけ</b>で済みます。
     </p>
     <details class="why" style="margin-top:8px">
       <summary>いまの状態（うまくいかないとき、この中身を伝えてください）</summary>
@@ -2517,6 +2587,7 @@ function bindCropper(){
       state.draft[crop.target + "Img"] = blob;
       paintShot(crop.target, blob);
       closeCropper();
+      nextShot();          // 続けて選んだ写真があれば、そのまま次の切り抜きへ
     } catch (e){ console.error(e); toast("画像を処理できませんでした"); }
   };
 }
@@ -2936,7 +3007,7 @@ async function muSave(){
 }
 
 function bindMulti(){
-  $("#btn-multi").onclick = () => openCamera("multi");
+  $("#btn-multi").onclick = () => pickPhoto("multi");
   $("#mu-auto").onclick = async () => {
     if (!multi.prof) return;
     multi.cuts = autoCuts(multi.prof);
@@ -3754,6 +3825,12 @@ async function renderStorage(){
   const p = imgPreset();
   $$("#seg-imgq button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === state.prefs.imgQuality)));
   $("#imgq-note").textContent = p.note;
+  // 写真の入り口
+  const psrc = state.prefs.photoSrc === "camera" ? "camera" : "library";
+  $$("#seg-photosrc button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === psrc)));
+  $("#photosrc-note").textContent = psrc === "camera"
+    ? "枠を押すと無音カメラが開きます。シャッター音は鳴りませんが、カメラを起こすぶん、許可を聞かれたり聴いている音楽が止まったりすることがあります。"
+    : "既定。枠を押すと端末の写真から選びます。カメラを起こさないので、許可を聞かれず音楽も止まりません。先に撮りためておいて、あとからまとめて登録するのにも向いています。";
   // カメラの持ちかた
   const hold = state.prefs.camHold === "keep" ? "keep" : "release";
   $$("#seg-camhold button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === hold)));
@@ -3828,6 +3905,7 @@ function closeModals(){
   // まとめて登録は、閉じるときに読み込んだページの画像も片づける
   if ($("#modal-multi").classList.contains("open")) closeMulti();
   $$(".modal").forEach(m => m.classList.remove("open"));
+  shotQueue = [];  // 途中でやめたら、続きの写真も取りやめる
   camKeepWarm();   // すぐには手放さない。続けて撮るときに許可を聞かれ直さないため
 }
 
@@ -3843,25 +3921,31 @@ function openSettings(){
 function bindUI(){
   $$("nav.tabs .t").forEach(b => b.onclick = () => go(b.dataset.view));
 
-  // 写真スロット → 「無音で撮る」か「写真から選ぶ」か
+  // 写真スロット → 既定の入り口（ふつうは「写真から選ぶ」）
   ["q","a"].forEach(w => {
     const el = $("#shot-" + w);
-    el.onclick = e => { if (e.target.closest(".clear")) return; openCamera(w); };
-    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openCamera(w); } };
+    el.onclick = e => { if (e.target.closest(".clear")) return; pickPhoto(w); };
+    el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickPhoto(w); } };
   });
+  // もう一方の入り口。空いているスロットへ入れる（問題が埋まっていれば解答へ）
+  $("#btn-othersrc").onclick = () => pickPhotoOther(state.draft.qImg ? "a" : "q");
   $("#cam-fallback").onclick = () => {
     $("#modal-cam").classList.remove("open");
-    $("#file-input").click();
+    openLibrary();
   };
   $("#file-input").onchange = e => {
-    const f = e.target.files && e.target.files[0];
-    if (!f) return;
+    const files = [...(e.target.files || [])];
+    if (!files.length) return;
     if (crop.target === "multi"){
       $("#file-input").value = "";
-      openMulti(f).catch(err => { console.error(err); toast("ページを読み取れませんでした"); });
-    } else {
-      openCropper(f, crop.target);
+      openMulti(files[0]).catch(err => { console.error(err); toast("ページを読み取れませんでした"); });
+      return;
     }
+    // 選んだ枚数ぶんを、そのスロットから下へ順に割りあてる
+    const slots = crop.target === "a" ? ["a"] : ["q", "a"];
+    shotQueue = files.slice(0, slots.length).map((f, i) => ({ file: f, target: slots[i] }));
+    if (shotQueue.length > 1) toast("1枚目を問題、2枚目を解答に入れます");
+    nextShot();
   };
   bindCropper();
   bindCamera();
@@ -3985,6 +4069,13 @@ function bindUI(){
   };
 
   // カメラの持ちかた
+  $("#seg-photosrc").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    state.prefs.photoSrc = b.dataset.v;
+    savePrefs(); renderStorage(); syncPhotoSrc();
+    if (b.dataset.v === "library") camRelease();   // もうカメラは要らない
+  };
+
   $("#seg-camhold").onclick = e => {
     const b = e.target.closest("button"); if (!b) return;
     state.prefs.camHold = b.dataset.v;

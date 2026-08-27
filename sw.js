@@ -1,5 +1,5 @@
 /* ミスノート — オフラインで動かすための最小サービスワーカー */
-const CACHE = "missnote-v17";
+const CACHE = "missnote-v18";
 const ASSETS = [
   "./",
   "./index.html",

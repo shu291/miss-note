@@ -678,8 +678,11 @@ input[type=range]{accent-color:var(--accent);}
 
       this.stop();
       // カメラを起こす前に宣言する。起こしたあとでは、
-      // すでに切り替わった設定を追いかけることになる
-      this._ambient = claimAmbient(this._prevAudioType);
+      // すでに切り替わった設定を追いかけることになる。
+      // no-audio-claim を付けると宣言しない（宣言のあり／なしを比べたいとき用）
+      this._ambient = this.hasAttribute('no-audio-claim')
+        ? false
+        : claimAmbient(this._prevAudioType);
       const res = RES_PRESETS[this.s.res] || RES_PRESETS.max;
 
       const attempt = async (constraints) =>
